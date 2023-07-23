@@ -1,0 +1,4119 @@
+/**
+ * Marlin 3D打印机固件
+ * 版权所有 (c) 2020 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
+ *
+ * 基于Sprinter和grbl。
+ * 版权所有 (c) 2011 Camiel Gubbels / Erik van der Zalm
+ *
+ * 本程序是自由软件：您可以在自由软件基金会发布的GNU通用公共许可证下
+ * 遵循其条款重新发布或修改
+ * 要么（根据您的选择）任何更高版本。
+ *
+ * 本程序是基于希望它有用的目的分发的，
+ * 但没有任何担保；甚至没有适销性或特定用途的暗示保证。详见
+ * GNU通用公共许可证获取更多细节。
+ *
+ * 如果没有，请与本程序一起收到GNU通用公共许可证的副本
+ * 请参阅 <https://www.gnu.org/licenses/>。
+ *
+ */
+#pragma once
+
+/**
+ * SanityCheck.h
+ *
+ * 在编译时测试配置值是否存在错误。
+ */
+
+/**
+ * 需要gcc 4.7或更新版本（首次包含在Arduino 1.6.8中），以支持C++11特性。
+ */
+#if __cplusplus < 201103L
+  #error "Marlin需要支持C++11的编译器（gcc >= 4.7，Arduino IDE >= 1.6.8）。请升级您的工具链。"
+#endif
+
+// 用于检测错误的字符串
+#define _NUM_AXES_STR NUM_AXIS_GANG("X ", "Y ", "Z ", "I ", "J ", "K ", "U ", "V ", "W ")
+#define _LOGICAL_AXES_STR LOGICAL_AXIS_GANG("E ", "X ", "Y ", "Z ", "I ", "J ", "K ", "U ", "V ", "W ")
+
+// 确保宏定义没有问题
+#define TEST1
+#define TEST2 1
+#define TEST3 0
+#define TEST4 true
+#if ENABLED(TEST0) || !ENABLED(TEST2) || ENABLED(TEST3) || !ENABLED(TEST1, TEST2, TEST4)
+  #error "ENABLED存在问题！"
+#endif
+#if ALL(TEST0, TEST1)
+  #error "ALL存在问题！"
+#endif
+#if DISABLED(TEST1) || !DISABLED(TEST3) || DISABLED(TEST4) || DISABLED(TEST0, TEST1, TEST2, TEST4) || !DISABLED(TEST0, TEST3)
+  #error "DISABLED存在问题！"
+#endif
+#if !ANY(TEST1, TEST2, TEST3, TEST4) || ANY(TEST0, TEST3)
+  #error "ANY存在问题！"
+#endif
+#if NONE(TEST0, TEST1, TEST2, TEST4) || !NONE(TEST0, TEST3)
+  #error "NONE存在问题！"
+#endif
+#undef TEST1
+#undef TEST2
+#undef TEST3
+#undef TEST4
+
+/**
+ * 这是为了提醒您关于不匹配的配置文件版本。
+ *
+ * 您可以编辑旧配置文件中的版本标签，然后再次进行构建。
+ * 下面的检查会提醒您需要更改的选项，但不会提醒您可能会发现有用的新选项。
+ * 因此，建议您尽快将设置转移到与您的Marlin版本匹配的新配置文件中。
+ */
+#define HEXIFY(H) _CAT(0x,H)
+#if !defined(CONFIGURATION_H_VERSION) || HEXIFY(CONFIGURATION_H_VERSION) < HEXIFY(REQUIRED_CONFIGURATION_H_VERSION)
+  #error "您的Configuration.h文件是用于旧版Marlin的。请降级Marlin或升级您的Configuration.h。"
+#elif HEXIFY(CONFIGURATION_H_VERSION) > HEXIFY(REQUIRED_CONFIGURATION_H_VERSION)
+  #error "您的Configuration.h文件是用于新版Marlin的。请升级Marlin或降级您的Configuration.h。"
+#endif
+#if !defined(CONFIGURATION_ADV_H_VERSION) || HEXIFY(CONFIGURATION_ADV_H_VERSION) < HEXIFY(REQUIRED_CONFIGURATION_ADV_H_VERSION)
+  #error "您的Configuration_adv.h文件是用于旧版Marlin的。请降级Marlin或升级您的Configuration_adv.h。"
+#elif HEXIFY(CONFIGURATION_ADV_H_VERSION) > HEXIFY(REQUIRED_CONFIGURATION_ADV_H_VERSION)
+  #error "您的Configuration_adv.h文件是用于新版Marlin的。请升级Marlin或降级您的Configuration_adv.h。"
+#endif
+#undef HEXIFY
+
+/**
+ * 旧配置的警告
+ */
+#ifndef MOTHERBOARD
+  #error "需要定义MOTHERBOARD。您必须'#define MOTHERBOARD BOARD_MYNAME'（而不仅仅是'#define BOARD_MYNAME'）。"
+#endif
+
+/**
+ * 必需的版本定义
+ */
+#ifndef SHORT_BUILD_VERSION
+  #error "必须指定SHORT_BUILD_VERSION。"
+#elif !defined(DETAILED_BUILD_VERSION)
+  #error "必须指定BUILD_VERSION。"
+#elif !defined(STRING_DISTRIBUTION_DATE)
+  #error "必须指定STRING_DISTRIBUTION_DATE。"
+#elif !defined(PROTOCOL_VERSION)
+  #error "必须指定PROTOCOL_VERSION。"
+#elif !defined(MACHINE_NAME)
+  #error "必须指定MACHINE_NAME。"
+#elif !defined(SOURCE_CODE_URL)
+  #error "必须指定SOURCE_CODE_URL。"
+#elif !defined(DEFAULT_MACHINE_UUID)
+  #error "必须指定DEFAULT_MACHINE_UUID。"
+#elif !defined(WEBSITE_URL)
+  #error "必须指定WEBSITE_URL。"
+#endif
+
+// 检查AXIS_RELATIVE_MODES
+constexpr float arm[] = AXIS_RELATIVE_MODES;
+static_assert(COUNT(arm) == LOGICAL_AXES, "AXIS_RELATIVE_MODES必须包含 " _LOGICAL_AXES_STR "个元素。");
+
+// 合并TMC26X，验证迁移（#24373）
+#define _ISMAX_1(A) defined(A##_MAX_CURRENT)
+#define _ISSNS_1(A) defined(A##_SENSE_RESISTOR)
+#if DO(ISMAX,||,ALL_AXIS_NAMES)
+  #error "现在应使用*_CURRENT设置*_MAX_CURRENT。"
+#elif DO(ISSNS,||,ALL_AXIS_NAMES)
+  #error "现在应使用*_RSENSE（以欧姆为单位）设置*_SENSE_RESISTOR（以毫欧姆为单位），因此您必须将值除以1000。"
+#endif
+#undef _ISMAX_1
+#undef _ISSNS_1
+
+/**
+ * 非DUE板禁止使用RADDS显示，目前。
+ */
+#if ENABLED(RADDS_DISPLAY) && !defined(__SAM3X8E__)
+  #error "RADDS_DISPLAY目前只与DUE板不兼容。"
+#endif
+
+/**
+ * 加热床要求
+ */
+#if HAS_HEATED_BED
+  #if !HAS_TEMP_BED
+    #error "加热床需要TEMP_BED_PIN或热电偶。"
+  #elif !HAS_HEATER_BED
+    #error "加热床需要HEATER_BED_PIN。"
+  #endif
+#endif
+
+/**
+ * Hephestos 2加热床套件要求
+ */
+#if ENABLED(HEPHESTOS2_HEATED_BED_KIT)
+  #if TEMP_SENSOR_BED != 70
+    #error "HEPHESTOS2_HEATED_BED_KIT需要TEMP_SENSOR_BED 70。"
+  #elif DISABLED(HEATER_BED_INVERTING)
+    #error "HEPHESTOS2_HEATED_BED_KIT需要HEATER_BED_INVERTING。"
+  #endif
+#endif
+
+/**
+ * 探针温度补偿要求
+ */
+#if HAS_PTC
+  #if TEMP_SENSOR_PROBE && TEMP_SENSOR_BED
+    #if defined(PTC_PARK_POS_X) || defined(PTC_PARK_POS_Y) || defined(PTC_PARK_POS_Z)
+      #error "PTC_PARK_POS_[XYZ]现在是PTC_PARK_POS（数组）。"
+    #elif !defined(PTC_PARK_POS)
+      #error "探针温度补偿需要PTC_PARK_POS。"
+    #elif defined(PTC_PROBE_POS_X) || defined(PTC_PROBE_POS_Y)
+      #error "PTC_PROBE_POS_[XY]现在是PTC_PROBE_POS（数组）。"
+    #elif !defined(PTC_PROBE_POS)
+      #error "探针温度补偿需要PTC_PROBE_POS。"
+    #endif
+  #endif
+
+  #if ENABLED(PTC_PROBE)
+    #if !TEMP_SENSOR_PROBE
+      #error "PTC_PROBE需要带热敏电阻的探针。"
+    #endif
+    #ifdef PTC_PROBE_START
+      constexpr auto _ptc_sample_start = PTC_PROBE_START;
+      constexpr decltype(_ptc_sample_start) _test_ptc_sample_start = 12.3f;
+      static_assert(_test_ptc_sample_start != 12.3f, "PTC_PROBE_START必须是整数。");
+    #endif
+    #ifdef PTC_PROBE_RES
+      constexpr auto _ptc_sample_res = PTC_PROBE_RES;
+      constexpr decltype(_ptc_sample_res) _test_ptc_sample_res = 12.3f;
+      static_assert(_test_ptc_sample_res != 12.3f, "PTC_PROBE_RES必须是整数。");
+    #endif
+    #if ENABLED(PTC_BED) && defined(PTC_PROBE_TEMP)
+      constexpr auto _btc_probe_temp = PTC_PROBE_TEMP;
+      constexpr decltype(_btc_probe_temp) _test_btc_probe_temp = 12.3f;
+      static_assert(_test_btc_probe_temp != 12.3f, "PTC_PROBE_TEMP必须是整数。");
+    #endif
+  #endif
+
+  #if ENABLED(PTC_BED)
+    #if !TEMP_SENSOR_BED
+      #error "PTC_BED需要带热敏电阻的加热床。"
+    #endif
+    #ifdef PTC_BED_START
+      constexpr auto _btc_sample_start = PTC_BED_START;
+      constexpr decltype(_btc_sample_start) _test_btc_sample_start = 12.3f;
+      static_assert(_test_btc_sample_start != 12.3f, "PTC_BED_START必须是整数。");
+    #endif
+    #ifdef PTC_BED_RES
+      constexpr auto _btc_sample_res = PTC_BED_RES;
+      constexpr decltype(_btc_sample_res) _test_btc_sample_res = 12.3f;
+      static_assert(_test_btc_sample_res != 12.3f, "PTC_BED_RES必须是整数。");
+    #endif
+  #endif
+
+  #if ENABLED(PTC_HOTEND)
+    #if EXTRUDERS != 1
+      #error "PTC_HOTEND需要单个挤出机。"
+    #endif
+    #ifdef PTC_HOTEND_START
+      constexpr auto _etc_sample_start = PTC_HOTEND_START;
+      constexpr decltype(_etc_sample_start) _test_etc_sample_start = 12.3f;
+      static_assert(_test_etc_sample_start != 12.3f, "PTC_HOTEND_START必须是整数。");
+    #endif
+    #ifdef PTC_HOTEND_RES
+      constexpr auto _etc_sample_res = PTC_HOTEND_RES;
+      constexpr decltype(_etc_sample_res) _test_etc_sample_res = 12.3f;
+      static_assert(_test_etc_sample_res != 12.3f, "PTC_HOTEND_RES必须是整数。");
+    #endif
+  #endif
+#endif // HAS_PTC
+
+/**
+ * 串口
+ */
+#ifndef SERIAL_PORT
+  #error "必须定义SERIAL_PORT。"
+#elif defined(SERIAL_PORT_2) && SERIAL_PORT_2 == SERIAL_PORT
+  #error "SERIAL_PORT_2不能与SERIAL_PORT相同。"
+#elif defined(SERIAL_PORT_3)
+  #ifndef SERIAL_PORT_2
+    #error "在使用SERIAL_PORT_3之前，请先使用SERIAL_PORT_2。"
+  #elif SERIAL_PORT_3 == SERIAL_PORT
+    #error "SERIAL_PORT_3不能与SERIAL_PORT相同。"
+  #elif SERIAL_PORT_3 == SERIAL_PORT_2
+    #error "SERIAL_PORT_3不能与SERIAL_PORT_2相同。"
+  #endif
+#endif
+#if !(defined(__AVR__) && defined(USBCON))
+  #if ENABLED(SERIAL_XON_XOFF) && RX_BUFFER_SIZE < 1024
+    #error "SERIAL_XON_XOFF需要RX_BUFFER_SIZE >= 1024以确保传输可靠，避免丢失。"
+  #elif RX_BUFFER_SIZE && (RX_BUFFER_SIZE < 2 || !IS_POWER_OF_2(RX_BUFFER_SIZE))
+    #error "RX_BUFFER_SIZE必须是大于1的2的整数次幂。"
+  #elif TX_BUFFER_SIZE && (TX_BUFFER_SIZE < 2 || TX_BUFFER_SIZE > 256 || !IS_POWER_OF_2(TX_BUFFER_SIZE))
+    #error "TX_BUFFER_SIZE必须是0或大于1且小于256的2的整数次幂。"
+  #endif
+#elif ANY(SERIAL_XON_XOFF, SERIAL_STATS_MAX_RX_QUEUED, SERIAL_STATS_DROPPED_RX)
+  #error "USB-native AVR设备不支持SERIAL_XON_XOFF和SERIAL_STATS_*功能。"
+#endif
+
+/**
+ * 每轴多个步进驱动器
+ */
+#define GOOD_AXIS_PINS(A) PINS_EXIST(A##_ENABLE, A##_STEP, A##_DIR)
+#if HAS_X2_STEPPER && !GOOD_AXIS_PINS(X2)
+  #error "如果定义了X2_DRIVER_TYPE，则还需要X2 ENABLE/STEP/DIR引脚。"
+#endif
+#if HAS_Y2_STEPPER && !GOOD_AXIS_PINS(Y2)
+  #error "如果定义了Y2_DRIVER_TYPE，则还需要Y2 ENABLE/STEP/DIR引脚。"
+#endif
+#if HAS_Z_AXIS
+  #if NUM_Z_STEPPERS >= 2 && !GOOD_AXIS_PINS(Z2)
+    #error "如果定义了Z2_DRIVER_TYPE，则还需要Z2 ENABLE/STEP/DIR引脚。"
+  #elif NUM_Z_STEPPERS >= 3 && !GOOD_AXIS_PINS(Z3)
+    #error "如果定义了Z3_DRIVER_TYPE，则还需要Z3 ENABLE/STEP/DIR引脚。"
+  #elif NUM_Z_STEPPERS >= 4 && !GOOD_AXIS_PINS(Z4)
+    #error "如果定义了Z4_DRIVER_TYPE，则还需要Z4 ENABLE/STEP/DIR引脚。"
+  #endif
+#endif
+
+/**
+ * 验证加热床尺寸
+ */
+#if !defined(X_BED_SIZE) || !defined(Y_BED_SIZE)
+  #error "X_BED_SIZE和Y_BED_SIZE是必需的！"
+#else
+  #if HAS_X_AXIS
+    static_assert(X_MAX_LENGTH >= X_BED_SIZE, "运动范围（X_MIN_POS，X_MAX_POS）太窄，无法容纳X_BED_SIZE。");
+  #endif
+  #if HAS_Y_AXIS
+    static_assert(Y_MAX_LENGTH >= Y_BED_SIZE, "运动范围（Y_MIN_POS，Y_MAX_POS）太窄，无法容纳Y_BED_SIZE。");
+  #endif
+#endif
+
+/**
+ * 精确的软件终点
+ */
+#if ENABLED(MIN_SOFTWARE_ENDSTOPS) && NONE(MIN_SOFTWARE_ENDSTOP_Z, POLARGRAPH)
+  #if IS_KINEMATIC
+    #error "在DELTA/SCARA上使用MIN_SOFTWARE_ENDSTOPS还需要MIN_SOFTWARE_ENDSTOP_Z。"
+  #elif NONE(MIN_SOFTWARE_ENDSTOP_X, MIN_SOFTWARE_ENDSTOP_Y)
+    #error "MIN_SOFTWARE_ENDSTOPS需要至少一个MIN_SOFTWARE_ENDSTOP_[XYZ]选项。"
+  #endif
+#endif
+
+#if ENABLED(MAX_SOFTWARE_ENDSTOPS) && NONE(MAX_SOFTWARE_ENDSTOP_Z, POLARGRAPH)
+  #if IS_KINEMATIC
+    #error "在DELTA/SCARA上使用MAX_SOFTWARE_ENDSTOPS还需要MAX_SOFTWARE_ENDSTOP_Z。"
+  #elif NONE(MAX_SOFTWARE_ENDSTOP_X, MAX_SOFTWARE_ENDSTOP_Y)
+    #error "MAX_SOFTWARE_ENDSTOPS需要至少一个MAX_SOFTWARE_ENDSTOP_[XYZ]选项。"
+  #endif
+#endif
+
+#if ALL(ENDSTOPPULLUPS, ENDSTOPPULLDOWNS)
+  #error "只能启用ENDSTOPPULLUPS或ENDSTOPPULLDOWNS中的一个。"
+#elif ALL(FIL_RUNOUT_PULLUP, FIL_RUNOUT_PULLDOWN)
+  #error "只能启用FIL_RUNOUT_PULLUP或FIL_RUNOUT_PULLDOWN中的一个。"
+#elif ALL(ENDSTOPPULLUP_XMAX, ENDSTOPPULLDOWN_XMAX)
+  #error "只能启用ENDSTOPPULLUP_X_MAX或ENDSTOPPULLDOWN_X_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_YMAX, ENDSTOPPULLDOWN_YMAX)
+  #error "只能启用ENDSTOPPULLUP_Y_MAX或ENDSTOPPULLDOWN_Y_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_ZMAX, ENDSTOPPULLDOWN_ZMAX)
+  #error "只能启用ENDSTOPPULLUP_Z_MAX或ENDSTOPPULLDOWN_Z_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_IMAX, ENDSTOPPULLDOWN_IMAX)
+  #error "只能启用ENDSTOPPULLUP_I_MAX或ENDSTOPPULLDOWN_I_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_JMAX, ENDSTOPPULLDOWN_JMAX)
+  #error "只能启用ENDSTOPPULLUP_J_MAX或ENDSTOPPULLDOWN_J_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_KMAX, ENDSTOPPULLDOWN_KMAX)
+  #error "只能启用ENDSTOPPULLUP_K_MAX或ENDSTOPPULLDOWN_K_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_UMAX, ENDSTOPPULLDOWN_UMAX)
+  #error "只能启用ENDSTOPPULLUP_U_MAX或ENDSTOPPULLDOWN_U_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_VMAX, ENDSTOPPULLDOWN_VMAX)
+  #error "只能启用ENDSTOPPULLUP_V_MAX或ENDSTOPPULLDOWN_V_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_WMAX, ENDSTOPPULLDOWN_WMAX)
+  #error "只能启用ENDSTOPPULLUP_W_MAX或ENDSTOPPULLDOWN_W_MAX中的一个。"
+#elif ALL(ENDSTOPPULLUP_XMIN, ENDSTOPPULLDOWN_XMIN)
+  #error "只能启用ENDSTOPPULLUP_X_MIN或ENDSTOPPULLDOWN_X_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_YMIN, ENDSTOPPULLDOWN_YMIN)
+  #error "只能启用ENDSTOPPULLUP_Y_MIN或ENDSTOPPULLDOWN_Y_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_ZMIN, ENDSTOPPULLDOWN_ZMIN)
+  #error "只能启用ENDSTOPPULLUP_Z_MIN或ENDSTOPPULLDOWN_Z_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_IMIN, ENDSTOPPULLDOWN_IMIN)
+  #error "只能启用ENDSTOPPULLUP_I_MIN或ENDSTOPPULLDOWN_I_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_JMIN, ENDSTOPPULLDOWN_JMIN)
+  #error "只能启用ENDSTOPPULLUP_J_MIN或ENDSTOPPULLDOWN_J_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_KMIN, ENDSTOPPULLDOWN_KMIN)
+  #error "只能启用ENDSTOPPULLUP_K_MIN或ENDSTOPPULLDOWN_K_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_UMIN, ENDSTOPPULLDOWN_UMIN)
+  #error "只能启用ENDSTOPPULLUP_U_MIN或ENDSTOPPULLDOWN_U_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_VMIN, ENDSTOPPULLDOWN_VMIN)
+  #error "只能启用ENDSTOPPULLUP_V_MIN或ENDSTOPPULLDOWN_V_MIN中的一个。"
+#elif ALL(ENDSTOPPULLUP_WMIN, ENDSTOPPULLDOWN_WMIN)
+  #error "只能启用ENDSTOPPULLUP_W_MIN或ENDSTOPPULLDOWN_W_MIN中的一个。"
+#endif
+
+/**
+ * LCD信息屏幕风格
+ */
+#if LCD_INFO_SCREEN_STYLE > 0
+  #if HAS_MARLINUI_U8GLIB || LCD_WIDTH < 20 || LCD_HEIGHT < 4
+    #error "备选LCD_INFO_SCREEN_STYLE需要一个20x4字符LCD。"
+  #elif LCD_INFO_SCREEN_STYLE > 1
+    #error "LCD_INFO_SCREEN_STYLE目前只有选项0和1。"
+  #endif
+#endif
+
+/**
+ * 进度条
+ */
+#if ENABLED(LCD_PROGRESS_BAR)
+  #if NONE(HAS_MEDIA, SET_PROGRESS_MANUALLY)
+    #error "LCD_PROGRESS_BAR需要SDSUPPORT或SET_PROGRESS_MANUALLY。"
+  #elif NONE(HAS_MARLINUI_HD44780, IS_TFTGLCD_PANEL)
+    #error "LCD_PROGRESS_BAR只适用于HD44780字符LCD和TFTGLCD_PANEL_(SPI|I2C)。"
+  #elif HAS_MARLINUI_U8GLIB || IS_DWIN_MARLINUI
+    #error "LCD_PROGRESS_BAR不适用于图形显示。"
+  #elif ENABLED(FILAMENT_LCD_DISPLAY)
+    #error "LCD_PROGRESS_BAR和FILAMENT_LCD_DISPLAY不完全兼容。要同时使用它们，请注释掉此行。"
+  #elif PROGRESS_MSG_EXPIRE < 0
+    #error "PROGRESS_MSG_EXPIRE必须大于或等于0。"
+  #endif
+#endif
+
+#if ENABLED(SET_PROGRESS_MANUALLY) && NONE(SET_PROGRESS_PERCENT, SET_REMAINING_TIME, SET_INTERACTION_TIME)
+  #error "SET_PROGRESS_MANUALLY需要至少启用SET_PROGRESS_PERCENT、SET_REMAINING_TIME、SET_INTERACTION_TIME中的一个。"
+#endif
+
+#if HAS_LCDPRINT && HAS_EXTRA_PROGRESS && LCD_HEIGHT < 4
+  #error "行数少于4的显示屏无法显示进度值（例如SHOW_PROGRESS_PERCENT、SHOW_ELAPSED_TIME、SHOW_REMAINING_TIME、SHOW_INTERACTION_TIME）。"
+#endif
+
+#if !HAS_MARLINUI_MENU && ENABLED(SD_REPRINT_LAST_SELECTED_FILE)
+  #error "SD_REPRINT_LAST_SELECTED_FILE目前需要Marlin原生的LCD菜单。"
+#endif
+
+#if ANY(HAS_MARLINUI_MENU, TOUCH_UI_FTDI_EVE, EXTENSIBLE_UI, DWIN_LCD_PROUI) && !defined(MANUAL_FEEDRATE)
+  #error "ProUI、MarlinUI、ExtUI或FTDI EVE触摸界面需要MANUAL_FEEDRATE。"
+#endif
+
+/**
+ * 自定义启动和状态屏幕
+ */
+#if ENABLED(SHOW_CUSTOM_BOOTSCREEN) && NONE(HAS_MARLINUI_U8GLIB, TOUCH_UI_FTDI_EVE, IS_DWIN_MARLINUI)
+  #error "SHOW_CUSTOM_BOOTSCREEN需要图形LCD或TOUCH_UI_FTDI_EVE。"
+#elif ENABLED(SHOW_CUSTOM_BOOTSCREEN) && DISABLED(SHOW_BOOTSCREEN)
+  #error "SHOW_CUSTOM_BOOTSCREEN需要SHOW_BOOTSCREEN。"
+#elif ENABLED(CUSTOM_STATUS_SCREEN_IMAGE) && !HAS_MARLINUI_U8GLIB
+  #error "CUSTOM_STATUS_SCREEN_IMAGE需要一个128x64 DOGM B/W图形LCD。"
+#endif
+
+/**
+ * LCD轻量级屏幕风格
+ */
+#if ENABLED(LIGHTWEIGHT_UI) && !IS_U8GLIB_ST7920
+  #error "LIGHTWEIGHT_UI需要基于U8GLIB_ST7920的显示屏。"
+#endif
+
+/**
+ * SD卡设置
+ */
+#if ALL(HAS_MEDIA, HAS_SD_DETECT, SD_CONNECTION_TYPICAL, ELB_FULL_GRAPHIC_CONTROLLER, HAS_MARLINUI_MENU) && SD_DETECT_STATE == LOW
+  #error "SD_DETECT_STATE必须设置为HIGH以便在ELB_FULL_GRAPHIC_CONTROLLER上使用SD。"
+#endif
+#undef SD_CONNECTION_TYPICAL
+
+/**
+ * SD文件排序
+ */
+#if ENABLED(SDCARD_SORT_ALPHA)
+  #if NONE(EXTENSIBLE_UI, HAS_MARLINUI_MENU, DWIN_CREALITY_LCD, DWIN_CREALITY_LCD_JYERSUI, DWIN_LCD_PROUI)
+    #error "SDCARD_SORT_ALPHA需要支持它的LCD。（不适用于M20等）"
+  #elif SDSORT_LIMIT > 256
+    #error "SDSORT_LIMIT必须小于或等于256。"
+  #elif SDSORT_LIMIT < 10
+    #error "SDSORT_LIMIT应该大于9才有用。"
+  #elif ENABLED(SDSORT_DYNAMIC_RAM) && DISABLED(SDSORT_USES_RAM)
+    #error "SDSORT_DYNAMIC_RAM需要SDSORT_USES_RAM（将目录读入RAM）"
+  #elif ENABLED(SDSORT_CACHE_NAMES) && DISABLED(SDSORT_USES_RAM)
+    #error "SDSORT_CACHE_NAMES需要SDSORT_USES_RAM（将目录读入RAM）"
+  #elif ENABLED(SDSORT_DYNAMIC_RAM) && DISABLED(SDSORT_CACHE_NAMES)
+    #error "SDSORT_DYNAMIC_RAM需要SDSORT_CACHE_NAMES。"
+  #endif
+
+  #if ENABLED(SDSORT_CACHE_NAMES) && DISABLED(SDSORT_DYNAMIC_RAM)
+    #if SDSORT_CACHE_VFATS < 2
+      #error "SDSORT_CACHE_VFATS必须大于或等于2！"
+    #elif SDSORT_CACHE_VFATS > VFAT_ENTRIES_LIMIT
+      #undef SDSORT_CACHE_VFATS
+      #define SDSORT_CACHE_VFATS VFAT_ENTRIES_LIMIT
+      #define SDSORT_CACHE_VFATS_WARNING 1
+    #endif
+  #endif
+#endif
+
+/**
+ * 自定义事件G代码
+ */
+#if defined(EVENT_GCODE_SD_ABORT) && DISABLED(NOZZLE_PARK_FEATURE)
+  static_assert(nullptr == strstr(EVENT_GCODE_SD_ABORT, "G27"), "使用G27在EVENT_GCODE_SD_ABORT中需要NOZZLE_PARK_FEATURE。");
+#endif
+#if ANY(TC_GCODE_USE_GLOBAL_X, TC_GCODE_USE_GLOBAL_Y, TC_GCODE_USE_GLOBAL_Z) && ENABLED(NO_WORKSPACE_OFFSETS)
+  #error "TC_GCODE_USE_GLOBAL_*选项与NO_WORKSPACE_OFFSETS不兼容。"
+#endif
+
+/**
+ * I2C位置编码器
+ */
+#if ENABLED(I2C_POSITION_ENCODERS)
+  #if !ALL(BABYSTEPPING, BABYSTEP_XY)
+    #error "I2C_POSITION_ENCODERS需要BABYSTEPPING和BABYSTEP_XY。"
+  #elif !WITHIN(I2CPE_ENCODER_CNT, 1, 5)
+    #error "I2CPE_ENCODER_CNT必须介于1和5之间。"
+  #endif
+#endif
+
+/**
+ * 微调
+ */
+#if ENABLED(BABYSTEPPING)
+  #if ENABLED(SCARA)
+    #error "尚未为SCARA实现BABYSTEPPING。"
+  #elif ENABLED(BABYSTEP_XY) && ANY(MARKFORGED_XY, MARKFORGED_YX)
+    #error "仅在MarkForged上为Z轴实现了BABYSTEPPING。"
+  #elif ALL(DELTA, BABYSTEP_XY)
+    #error "仅在delta机器人上为Z轴实现了BABYSTEPPING。"
+  #elif ALL(BABYSTEP_ZPROBE_OFFSET, MESH_BED_LEVELING)
+    #error "MESH_BED_LEVELING和BABYSTEP_ZPROBE_OFFSET不是有效的组合"
+  #elif ENABLED(BABYSTEP_ZPROBE_OFFSET) && !HAS_BED_PROBE
+    #error "BABYSTEP_ZPROBE_OFFSET需要一个探针。"
+  #elif ENABLED(BABYSTEP_GFX_OVERLAY) && NONE(HAS_MARLINUI_U8GLIB, IS_DWIN_MARLINUI)
+    #error "BABYSTEP_GFX_OVERLAY需要一个图形LCD。"
+  #elif ENABLED(BABYSTEP_GFX_OVERLAY) && DISABLED(BABYSTEP_ZPROBE_OFFSET)
+    #error "BABYSTEP_GFX_OVERLAY需要BABYSTEP_ZPROBE_OFFSET。"
+  #elif ENABLED(BABYSTEP_HOTEND_Z_OFFSET) && !HAS_HOTEND_OFFSET
+    #error "BABYSTEP_HOTEND_Z_OFFSET需要2个或更多个HOTENDS。"
+  #elif ALL(BABYSTEP_ALWAYS_AVAILABLE, MOVE_Z_WHEN_IDLE)
+    #error "BABYSTEP_ALWAYS_AVAILABLE和MOVE_Z_WHEN_IDLE不兼容。"
+  #elif !defined(BABYSTEP_MULTIPLICATOR_Z)
+    #error "BABYSTEPPING需要BABYSTEP_MULTIPLICATOR_Z。"
+  #elif ENABLED(BABYSTEP_XY) && !defined(BABYSTEP_MULTIPLICATOR_XY)
+    #error "BABYSTEP_XY需要BABYSTEP_MULTIPLICATOR_XY。"
+  #elif ENABLED(BABYSTEP_MILLIMETER_UNITS)
+    static_assert(BABYSTEP_MULTIPLICATOR_Z <= 0.1f, "BABYSTEP_MULTIPLICATOR_Z必须小于或等于0.1mm。");
+    #if ENABLED(BABYSTEP_XY)
+      static_assert(BABYSTEP_MULTIPLICATOR_XY <= 0.25f, "BABYSTEP_MULTIPLICATOR_XY必须小于或等于0.25mm。");
+    #endif
+  #endif
+#endif
+
+/**
+ * 断丝检测需要一个或多个引脚，以及SD卡支持或自动打印开始检测
+ */
+#if HAS_FILAMENT_SENSOR
+  #if !PIN_EXISTS(FIL_RUNOUT)
+    #error "FILAMENT_RUNOUT_SENSOR需要FIL_RUNOUT_PIN。"
+  #elif HAS_PRUSA_MMU2 && NUM_RUNOUT_SENSORS != 1
+      #error "NUM_RUNOUT_SENSORS必须为1，配合MMU2 / MMU2S使用。"
+  #elif NUM_RUNOUT_SENSORS != 1 && NUM_RUNOUT_SENSORS != E_STEPPERS
+    #error "NUM_RUNOUT_SENSORS必须为1或E步进电机的数量。"
+  #elif NUM_RUNOUT_SENSORS >= 8 && !PIN_EXISTS(FIL_RUNOUT8)
+    #error "NUM_RUNOUT_SENSORS >= 8时需要FIL_RUNOUT8_PIN。"
+  #elif NUM_RUNOUT_SENSORS >= 7 && !PIN_EXISTS(FIL_RUNOUT7)
+    #error "NUM_RUNOUT_SENSORS >= 7时需要FIL_RUNOUT7_PIN。"
+  #elif NUM_RUNOUT_SENSORS >= 6 && !PIN_EXISTS(FIL_RUNOUT6)
+    #error "NUM_RUNOUT_SENSORS >= 6时需要FIL_RUNOUT6_PIN。"
+  #elif NUM_RUNOUT_SENSORS >= 5 && !PIN_EXISTS(FIL_RUNOUT5)
+    #error "NUM_RUNOUT_SENSORS >= 5时需要FIL_RUNOUT5_PIN。"
+  #elif NUM_RUNOUT_SENSORS >= 4 && !PIN_EXISTS(FIL_RUNOUT4)
+    #error "NUM_RUNOUT_SENSORS >= 4时需要FIL_RUNOUT4_PIN。"
+  #elif NUM_RUNOUT_SENSORS >= 3 && !PIN_EXISTS(FIL_RUNOUT3)
+    #error "NUM_RUNOUT_SENSORS >= 3时需要FIL_RUNOUT3_PIN。"
+  #elif NUM_RUNOUT_SENSORS >= 2 && !PIN_EXISTS(FIL_RUNOUT2)
+    #error "NUM_RUNOUT_SENSORS >= 2时需要FIL_RUNOUT2_PIN。"
+  #elif ALL(FIL_RUNOUT1_PULLUP, FIL_RUNOUT1_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT1_PULLUP和FIL_RUNOUT1_PULLDOWN。"
+  #elif ALL(FIL_RUNOUT2_PULLUP, FIL_RUNOUT2_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT2_PULLUP和FIL_RUNOUT2_PULLDOWN。"
+  #elif ALL(FIL_RUNOUT3_PULLUP, FIL_RUNOUT3_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT3_PULLUP和FIL_RUNOUT3_PULLDOWN。"
+  #elif ALL(FIL_RUNOUT4_PULLUP, FIL_RUNOUT4_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT4_PULLUP和FIL_RUNOUT4_PULLDOWN。"
+  #elif ALL(FIL_RUNOUT5_PULLUP, FIL_RUNOUT5_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT5_PULLUP和FIL_RUNOUT5_PULLDOWN。"
+  #elif ALL(FIL_RUNOUT6_PULLUP, FIL_RUNOUT6_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT6_PULLUP和FIL_RUNOUT6_PULLDOWN。"
+  #elif ALL(FIL_RUNOUT7_PULLUP, FIL_RUNOUT7_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT7_PULLUP和FIL_RUNOUT7_PULLDOWN。"
+  #elif ALL(FIL_RUNOUT8_PULLUP, FIL_RUNOUT8_PULLDOWN)
+    #error "不能同时启用FIL_RUNOUT8_PULLUP和FIL_RUNOUT8_PULLDOWN。"
+  #elif FILAMENT_RUNOUT_DISTANCE_MM < 0
+    #error "FILAMENT_RUNOUT_DISTANCE_MM必须大于或等于零。"
+  #elif DISABLED(ADVANCED_PAUSE_FEATURE) && defined(FILAMENT_RUNOUT_SCRIPT)
+    static_assert(nullptr == strstr(FILAMENT_RUNOUT_SCRIPT, "M600"), "使用FILAMENT_RUNOUT_SENSOR需要ADVANCED_PAUSE_FEATURE支持M600。");
+  #endif
+#endif
+
+/**
+ * 高级暂停
+ */
+#if ENABLED(ADVANCED_PAUSE_FEATURE)
+  #if !HAS_RESUME_CONTINUE
+    #error "ADVANCED_PAUSE_FEATURE需要支持的LCD控制器（或EMERGENCY_PARSER）。"
+  #elif DISABLED(NOZZLE_PARK_FEATURE)
+    #error "ADVANCED_PAUSE_FEATURE需要NOZZLE_PARK_FEATURE。"
+  #elif !defined(FILAMENT_UNLOAD_PURGE_FEEDRATE)
+    #error "ADVANCED_PAUSE_FEATURE需要FILAMENT_UNLOAD_PURGE_FEEDRATE。"
+  #elif ENABLED(EXTRUDER_RUNOUT_PREVENT)
+    #error "EXTRUDER_RUNOUT_PREVENT与ADVANCED_PAUSE_FEATURE不兼容。"
+  #elif ENABLED(PARK_HEAD_ON_PAUSE) && NONE(HAS_MEDIA, IS_NEWPANEL, EMERGENCY_PARSER)
+    #error "PARK_HEAD_ON_PAUSE需要HAS_MEDIA、EMERGENCY_PARSER或LCD控制器。"
+  #elif ENABLED(HOME_BEFORE_FILAMENT_CHANGE) && DISABLED(PAUSE_PARK_NO_STEPPER_TIMEOUT)
+    #error "HOME_BEFORE_FILAMENT_CHANGE需要PAUSE_PARK_NO_STEPPER_TIMEOUT。"
+  #elif ENABLED(PREVENT_LENGTHY_EXTRUDE) && FILAMENT_CHANGE_UNLOAD_LENGTH > EXTRUDE_MAXLENGTH
+    #error "FILAMENT_CHANGE_UNLOAD_LENGTH必须小于或等于EXTRUDE_MAXLENGTH。"
+  #elif ENABLED(PREVENT_LENGTHY_EXTRUDE) && FILAMENT_CHANGE_SLOW_LOAD_LENGTH > EXTRUDE_MAXLENGTH
+    #error "FILAMENT_CHANGE_SLOW_LOAD_LENGTH必须小于或等于EXTRUDE_MAXLENGTH。"
+  #elif ENABLED(PREVENT_LENGTHY_EXTRUDE) && FILAMENT_CHANGE_FAST_LOAD_LENGTH > EXTRUDE_MAXLENGTH
+    #error "FILAMENT_CHANGE_FAST_LOAD_LENGTH必须小于或等于EXTRUDE_MAXLENGTH。"
+  #endif
+#endif
+
+#if ENABLED(NOZZLE_PARK_FEATURE)
+  constexpr float npp[] = NOZZLE_PARK_POINT;
+  static_assert(COUNT(npp) == _MIN(NUM_AXES, XYZ), "NOZZLE_PARK_POINT需要启用轴的坐标，但最多只能到X，Y，Z。");
+  constexpr xyz_pos_t npp_xyz = NOZZLE_PARK_POINT;
+  static_assert(WITHIN(npp_xyz.x, X_MIN_POS, X_MAX_POS), "NOZZLE_PARK_POINT.X超出范围（X_MIN_POS，X_MAX_POS）。");
+  static_assert(TERN1(HAS_Y_AXIS, WITHIN(npp_xyz.y, Y_MIN_POS, Y_MAX_POS)), "NOZZLE_PARK_POINT.Y超出范围（Y_MIN_POS，Y_MAX_POS）。");
+  static_assert(TERN1(HAS_Z_AXIS, WITHIN(npp_xyz.z, Z_MIN_POS, Z_MAX_POS)), "NOZZLE_PARK_POINT.Z超出范围（Z_MIN_POS，Z_MAX_POS）。");
+#endif
+
+/**
+ * 瞬间冻结
+ */
+#if ENABLED(FREEZE_FEATURE) && !(PIN_EXISTS(FREEZE) && defined(FREEZE_STATE))
+  #error "FREEZE_FEATURE需要FREEZE_PIN和FREEZE_STATE。"
+#endif
+
+/**
+ * 对于DELTA，单独的轴归位是没有用的
+ */
+#if ALL(INDIVIDUAL_AXIS_HOMING_MENU, DELTA)
+  #error "INDIVIDUAL_AXIS_HOMING_MENU与DELTA运动学不兼容。"
+#endif
+
+/**
+ * 所有Průša MMU的健全性检查
+ */
+#ifdef SNMM
+  #error "SNMM已过时。请将MMU_MODEL定义为PRUSA_MMU1。"
+#elif ENABLED(MK2_MULTIPLEXER)
+  #error "MK2_MULTIPLEXER已过时。请将MMU_MODEL定义为PRUSA_MMU1。"
+#elif ENABLED(PRUSA_MMU2)
+  #error "PRUSA_MMU2已过时。请将MMU_MODEL定义为PRUSA_MMU2。"
+#elif ENABLED(PRUSA_MMU2_S_MODE)
+  #error "PRUSA_MMU2_S_MODE已过时。请将MMU_MODEL定义为PRUSA_MMU2S。"
+#elif ENABLED(SMUFF_EMU_MMU2)
+  #error "SMUFF_EMU_MMU2已过时。请将MMU_MODEL定义为EXTENDABLE_EMU_MMU2。"
+#elif ENABLED(SMUFF_EMU_MMU2S)
+  #error "SMUFF_EMU_MMU2S已过时。请将MMU_MODEL定义为EXTENDABLE_EMU_MMU2S。"
+#endif
+
+/**
+ * Multi-Material-Unit 2 / EXTENDABLE_EMU_MMU2要求
+ */
+#if HAS_PRUSA_MMU2
+  #if !HAS_EXTENDABLE_MMU && EXTRUDERS != 5
+    #undef SINGLENOZZLE
+    #error "PRUSA_MMU2(S)需要确切的5个EXTRUDERS。请更新您的配置。"
+  #elif HAS_EXTENDABLE_MMU && EXTRUDERS > 15
+    #error "EXTRUDERS对于MMU(S)仿真模式来说太大了。最大值为15。"
+  #elif DISABLED(NOZZLE_PARK_FEATURE)
+    #error "PRUSA_MMU2(S)需要NOZZLE_PARK_FEATURE。请启用它以继续。"
+  #elif HAS_PRUSA_MMU2S && DISABLED(FILAMENT_RUNOUT_SENSOR)
+    #error "PRUSA_MMU2S需要FILAMENT_RUNOUT_SENSOR。请启用它以继续。"
+  #elif ENABLED(MMU_EXTRUDER_SENSOR) && DISABLED(FILAMENT_RUNOUT_SENSOR)
+    #error "MMU_EXTRUDER_SENSOR需要FILAMENT_RUNOUT_SENSOR。请启用它以继续。"
+  #elif ENABLED(MMU_EXTRUDER_SENSOR) && !HAS_MARLINUI_MENU
+    #error "MMU_EXTRUDER_SENSOR需要支持MarlinUI的LCD。"
+  #elif ENABLED(MMU2_MENUS) && !HAS_MARLINUI_MENU
+    #error "MMU2_MENUS需要支持MarlinUI的LCD。"
+  #elif DISABLED(ADVANCED_PAUSE_FEATURE)
+    static_assert(nullptr == strstr(MMU2_FILAMENT_RUNOUT_SCRIPT, "M600"), "使用PRUSA_MMU2(S) / HAS_EXTENDABLE_MMU(S)需要ADVANCED_PAUSE_FEATURE支持M600。");
+  #endif
+#endif
+
+/**
+ * 仅适用于EXTRUDERS > 1的选项
+ */
+#if HAS_MULTI_EXTRUDER
+
+  #if HAS_EXTENDABLE_MMU
+    #define MAX_EXTRUDERS 15
+  #else
+    #define MAX_EXTRUDERS  8
+  #endif
+  static_assert(EXTRUDERS <= MAX_EXTRUDERS, "Marlin支持最多" STRINGIFY(MAX_EXTRUDERS) "个EXTRUDERS。");
+  #undef MAX_EXTRUDERS
+
+  #if ENABLED(HEATERS_PARALLEL)
+    #error "在HEATERS_PARALLEL中EXTRUDERS必须为1。"
+  #endif
+
+  #if ENABLED(STATUS_HOTEND_INVERTED) && NONE(STATUS_HOTEND_NUMBERLESS, STATUS_HOTEND_ANIM)
+    #error "对于多个挤出头，STATUS_HOTEND_INVERTED需要STATUS_HOTEND_ANIM或STATUS_HOTEND_NUMBERLESS。"
+  #endif
+
+  #if ENABLED(TOOLCHANGE_FILAMENT_SWAP)
+    #ifndef TOOLCHANGE_FS_LENGTH
+      #error "TOOLCHANGE_FILAMENT_SWAP需要TOOLCHANGE_FS_LENGTH。"
+    #elif !defined(TOOLCHANGE_FS_RETRACT_SPEED)
+      #error "TOOLCHANGE_FILAMENT_SWAP需要TOOLCHANGE_FS_RETRACT_SPEED。"
+    #elif !defined(TOOLCHANGE_FS_PRIME_SPEED)
+      #error "TOOLCHANGE_FILAMENT_SWAP需要TOOLCHANGE_FS_PRIME_SPEED。"
+    #endif
+  #endif
+
+  #if ENABLED(TOOLCHANGE_PARK)
+    #ifndef TOOLCHANGE_PARK_XY
+      #error "TOOLCHANGE_PARK需要TOOLCHANGE_PARK_XY。"
+    #elif !defined(TOOLCHANGE_PARK_XY_FEEDRATE)
+      #error "TOOLCHANGE_PARK需要TOOLCHANGE_PARK_XY_FEEDRATE。"
+    #endif
+  #endif
+
+  #ifndef TOOLCHANGE_ZRAISE
+    #error "对于EXTRUDERS > 1，需要TOOLCHANGE_ZRAISE。"
+  #endif
+
+#elif HAS_PRUSA_MMU1 || HAS_EXTENDABLE_MMU
+
+  #error "Multi-Material-Unit需要2个或更多EXTRUDERS。"
+
+#elif ENABLED(SINGLENOZZLE)
+
+  #error "SINGLENOZZLE需要2个或更多EXTRUDERS。"
+  #if ENABLED(PID_PARAMS_PER_HOTEND)
+    #error "使用任何SINGLENOZZLE挤出头时，必须禁用PID_PARAMS_PER_HOTEND。"
+  #endif
+
+#endif
+
+/**
+ * 具有切换伺服的双喷嘴驱动器
+ */
+#if ALL(SWITCHING_NOZZLE, MECHANICAL_SWITCHING_NOZZLE)
+  #error "只能启用SWITCHING_NOZZLE或MECHANICAL_SWITCHING_NOZZLE中的一个。"
+#elif ENABLED(MECHANICAL_SWITCHING_NOZZLE)
+  #if EXTRUDERS != 2
+    #error "MECHANICAL_SWITCHING_NOZZLE需要恰好2个喷头。"
+  #elif ENABLED(DUAL_X_CARRIAGE)
+    #error "MECHANICAL_SWITCHING_NOZZLE与DUAL_X_CARRIAGE不兼容。"
+  #elif ENABLED(SINGLENOZZLE)
+    #error "MECHANICAL_SWITCHING_NOZZLE与SINGLENOZZLE不兼容。"
+  #elif HAS_PRUSA_MMU2
+    #error "MECHANICAL_SWITCHING_NOZZLE与PRUSA_MMU2(S)不兼容。"
+  #elif !defined(EVENT_GCODE_TOOLCHANGE_T0)
+    #error "MECHANICAL_SWITCHING_NOZZLE需要EVENT_GCODE_TOOLCHANGE_T0。"
+  #elif !defined(EVENT_GCODE_TOOLCHANGE_T1)
+    #error "MECHANICAL_SWITCHING_NOZZLE需要EVENT_GCODE_TOOLCHANGE_T1。"
+  #endif
+#elif ENABLED(SWITCHING_NOZZLE)
+  #if EXTRUDERS != 2
+    #error "SWITCHING_NOZZLE需要恰好2个喷头。"
+  #elif ENABLED(DUAL_X_CARRIAGE)
+    #error "SWITCHING_NOZZLE与DUAL_X_CARRIAGE不兼容。"
+  #elif ENABLED(SINGLENOZZLE)
+    #error "SWITCHING_NOZZLE与SINGLENOZZLE不兼容。"
+  #elif HAS_PRUSA_MMU2
+    #error "SWITCHING_NOZZLE与PRUSA_MMU2(S)不兼容。"
+  #elif NUM_SERVOS < 1
+    #error "SWITCHING_NOZZLE需要NUM_SERVOS >= 1。"
+  #elif !defined(SWITCHING_NOZZLE_SERVO_NR)
+    #error "SWITCHING_NOZZLE需要SWITCHING_NOZZLE_SERVO_NR。"
+  #elif SWITCHING_NOZZLE_SERVO_NR == 0 && !PIN_EXISTS(SERVO0)
+    #error "您的SWITCHING_NOZZLE需要定义SERVO0_PIN。"
+  #elif SWITCHING_NOZZLE_SERVO_NR == 1 && !PIN_EXISTS(SERVO1)
+    #error "您的SWITCHING_NOZZLE需要定义SERVO1_PIN。"
+  #elif SWITCHING_NOZZLE_SERVO_NR == 2 && !PIN_EXISTS(SERVO2)
+    #error "您的SWITCHING_NOZZLE需要定义SERVO2_PIN。"
+  #elif SWITCHING_NOZZLE_SERVO_NR == 3 && !PIN_EXISTS(SERVO3)
+    #error "您的SWITCHING_NOZZLE需要定义SERVO3_PIN。"
+  #endif
+  #ifdef SWITCHING_NOZZLE_E1_SERVO_NR
+    #if SWITCHING_NOZZLE_E1_SERVO_NR == SWITCHING_NOZZLE_SERVO_NR
+      #error "SWITCHING_NOZZLE_E1_SERVO_NR必须与SWITCHING_NOZZLE_SERVO_NR不同。"
+    #elif SWITCHING_NOZZLE_E1_SERVO_NR == 0 && !PIN_EXISTS(SERVO0)
+      #error "您的SWITCHING_NOZZLE需要定义SERVO0_PIN。"
+    #elif SWITCHING_NOZZLE_E1_SERVO_NR == 1 && !PIN_EXISTS(SERVO1)
+      #error "您的SWITCHING_NOZZLE需要定义SERVO1_PIN。"
+    #elif SWITCHING_NOZZLE_E1_SERVO_NR == 2 && !PIN_EXISTS(SERVO2)
+      #error "您的SWITCHING_NOZZLE需要定义SERVO2_PIN。"
+    #elif SWITCHING_NOZZLE_E1_SERVO_NR == 3 && !PIN_EXISTS(SERVO3)
+      #error "您的SWITCHING_NOZZLE需要定义SERVO3_PIN。"
+    #endif
+  #endif
+#endif // SWITCHING_NOZZLE
+
+/**
+ * 具有切换伺服的单步进双喷嘴
+ */
+#if ALL(SWITCHING_EXTRUDER, MECHANICAL_SWITCHING_EXTRUDER)
+  #error "只能启用SWITCHING_EXTRUDER或MECHANICAL_SWITCHING_EXTRUDER中的一个。"
+#elif ENABLED(MECHANICAL_SWITCHING_EXTRUDER)
+  #if EXTRUDERS < 2
+    #error "MECHANICAL_SWITCHING_EXTRUDER需要EXTRUDERS >= 2。"
+  #elif !defined(EVENT_GCODE_TOOLCHANGE_T0)
+    #error "MECHANICAL_SWITCHING_EXTRUDER需要EVENT_GCODE_TOOLCHANGE_T0。"
+  #elif !defined(EVENT_GCODE_TOOLCHANGE_T1)
+    #error "MECHANICAL_SWITCHING_EXTRUDER需要EVENT_GCODE_TOOLCHANGE_T1。"
+  #endif
+#elif ENABLED(SWITCHING_EXTRUDER)
+  #if NUM_SERVOS < 1
+    #error "SWITCHING_EXTRUDER需要NUM_SERVOS >= 1。"
+  #elif !defined(SWITCHING_EXTRUDER_SERVO_NR)
+    #error "SWITCHING_EXTRUDER需要SWITCHING_EXTRUDER_SERVO_NR。"
+  #elif SWITCHING_EXTRUDER_SERVO_NR == 0 && !PIN_EXISTS(SERVO0)
+    #error "您的SWITCHING_EXTRUDER需要定义SERVO0_PIN。"
+  #elif SWITCHING_EXTRUDER_SERVO_NR == 1 && !PIN_EXISTS(SERVO1)
+    #error "您的SWITCHING_EXTRUDER需要定义SERVO1_PIN。"
+  #elif SWITCHING_EXTRUDER_SERVO_NR == 2 && !PIN_EXISTS(SERVO2)
+    #error "您的SWITCHING_EXTRUDER需要定义SERVO2_PIN。"
+  #elif SWITCHING_EXTRUDER_SERVO_NR == 3 && !PIN_EXISTS(SERVO3)
+    #error "您的SWITCHING_EXTRUDER需要定义SERVO3_PIN。"
+  #endif
+  #if EXTRUDERS > 3
+    #if NUM_SERVOS < 2
+      #error "具有4个喷嘴的SWITCHING_EXTRUDER需要NUM_SERVOS >= 2。"
+    #elif SWITCHING_EXTRUDER_E23_SERVO_NR == 0 && !PIN_EXISTS(SERVO0)
+      #error "您的SWITCHING_EXTRUDER需要定义SERVO0_PIN。"
+    #elif SWITCHING_EXTRUDER_E23_SERVO_NR == 1 && !PIN_EXISTS(SERVO1)
+      #error "您的SWITCHING_EXTRUDER需要定义SERVO1_PIN。"
+    #elif SWITCHING_EXTRUDER_E23_SERVO_NR == 2 && !PIN_EXISTS(SERVO2)
+      #error "您的SWITCHING_EXTRUDER需要定义SERVO2_PIN。"
+    #elif SWITCHING_EXTRUDER_E23_SERVO_NR == 3 && !PIN_EXISTS(SERVO3)
+      #error "您的SWITCHING_EXTRUDER需要定义SERVO3_PIN。"
+    #elif SWITCHING_EXTRUDER_E23_SERVO_NR == SWITCHING_EXTRUDER_SERVO_NR
+      #error "SWITCHING_EXTRUDER_E23_SERVO_NR应该是与SWITCHING_EXTRUDER_SERVO_NR不同的喷嘴。"
+    #endif
+  #elif EXTRUDERS < 2
+    #error "SWITCHING_EXTRUDER需要EXTRUDERS >= 2。"
+  #endif
+#endif // SWITCHING_EXTRUDER
+
+/**
+ * 混合喷嘴要求
+ */
+#if ENABLED(MIXING_EXTRUDER)
+  #if HAS_MULTI_EXTRUDER
+    #error "对于MIXING_EXTRUDER，请设置MIXING_STEPPERS > 1，而不是EXTRUDERS > 1。"
+  #elif MIXING_STEPPERS < 2
+    #error "混合喷嘴必须设置MIXING_STEPPERS >= 2。"
+  #elif ENABLED(FILAMENT_WIDTH_SENSOR)
+    #error "MIXING_EXTRUDER与FILAMENT_WIDTH_SENSOR不兼容。将此行注释掉以便使用它。"
+  #elif HAS_SWITCHING_EXTRUDER
+    #error "MIXING_EXTRUDER与(MECHANICAL_)SWITCHING_EXTRUDER不兼容。"
+  #elif ENABLED(SINGLENOZZLE)
+    #error "MIXING_EXTRUDER与SINGLENOZZLE不兼容。"
+  #elif ENABLED(DISABLE_OTHER_EXTRUDERS)
+    #error "MIXING_EXTRUDER与DISABLE_OTHER_EXTRUDERS不兼容。"
+  #elif HAS_FILAMENT_RUNOUT_DISTANCE
+    #error "MIXING_EXTRUDER与FILAMENT_RUNOUT_DISTANCE_MM不兼容。"
+  #endif
+#endif
+
+/**
+ * 双E步进电机要求
+ */
+#if ENABLED(E_DUAL_STEPPER_DRIVERS)
+  #if EXTRUDERS > 1
+    #error "E_DUAL_STEPPER_DRIVERS只能与EXTRUDERS设置为1一起使用。"
+  #elif ENABLED(MIXING_EXTRUDER)
+    #error "E_DUAL_STEPPER_DRIVERS与MIXING_EXTRUDER不兼容。"
+  #elif HAS_SWITCHING_EXTRUDER
+    #error "E_DUAL_STEPPER_DRIVERS与(MECHANICAL_)SWITCHING_EXTRUDER不兼容。"
+  #endif
+#endif
+
+/**
+ * 线性提前1.5 - 检查K值范围
+ */
+#if ENABLED(LIN_ADVANCE)
+  #if DISTINCT_E > 1
+    constexpr float lak[] = ADVANCE_K;
+    static_assert(COUNT(lak) <= DISTINCT_E, "ADVANCE_K数组的元素过多（即超过" STRINGIFY(DISTINCT_E) "个）。");
+    #define _LIN_ASSERT(N) static_assert(N >= COUNT(lak) || WITHIN(lak[N], 0, 10), "ADVANCE_K值必须在0到10之间（在LIN_ADVANCE v1.5中更改，Marlin 1.1.9）。");
+    REPEAT(DISTINCT_E, _LIN_ASSERT)
+    #undef _LIN_ASSERT
+  #else
+    static_assert(WITHIN(ADVANCE_K, 0, 10), "ADVANCE_K必须在0到10之间（在LIN_ADVANCE v1.5中更改，Marlin 1.1.9）。");
+  #endif
+
+  #if ENABLED(DIRECT_STEPPING)
+    #error "DIRECT_STEPPING与LIN_ADVANCE不兼容。（挤出由步进守护程序外部控制。）"
+  #elif NONE(HAS_JUNCTION_DEVIATION, ALLOW_LOW_EJERK) && defined(DEFAULT_EJERK)
+    static_assert(DEFAULT_EJERK >= 10, "使用LIN_ADVANCE时，强烈建议将DEFAULT_EJERK设置为大于等于10。启用ALLOW_LOW_EJERK以跳过此警告（例如，用于直驱）。");
+  #endif
+#endif
+
+/**
+ * 特殊的工具切换选项
+ */
+#if MANY(SINGLENOZZLE, DUAL_X_CARRIAGE, PARKING_EXTRUDER, MAGNETIC_PARKING_EXTRUDER, SWITCHING_TOOLHEAD, MAGNETIC_SWITCHING_TOOLHEAD, ELECTROMAGNETIC_SWITCHING_TOOLHEAD)
+  #error "请仅选择SINGLENOZZLE、DUAL_X_CARRIAGE、PARKING_EXTRUDER、MAGNETIC_PARKING_EXTRUDER、SWITCHING_TOOLHEAD、MAGNETIC_SWITCHING_TOOLHEAD或ELECTROMAGNETIC_SWITCHING_TOOLHEAD中的一个。"
+#endif
+
+/**
+ * （磁性）停车挤出机要求
+ */
+#if ANY(PARKING_EXTRUDER, MAGNETIC_PARKING_EXTRUDER)
+  #if ENABLED(EXT_SOLENOID)
+    #error "（磁性）停车挤出机和EXT_SOLENOID不兼容。（引脚被重复使用。）"
+  #elif EXTRUDERS != 2
+    #error "（磁性）停车挤出机需要恰好2个EXTRUDERS。"
+  #elif !defined(PARKING_EXTRUDER_PARKING_X)
+    #error "（磁性）停车挤出机需要PARKING_EXTRUDER_PARKING_X。"
+  #elif !defined(TOOLCHANGE_ZRAISE)
+    #error "（磁性）停车挤出机需要TOOLCHANGE_ZRAISE。"
+  #elif TOOLCHANGE_ZRAISE < 0
+    #error "TOOLCHANGE_ZRAISE必须为0或更高。"
+  #elif ENABLED(PARKING_EXTRUDER)
+    #if !PINS_EXIST(SOL0, SOL1)
+      #error "（磁性）停车挤出机需要SOL0_PIN和SOL1_PIN。"
+    #elif !defined(PARKING_EXTRUDER_SOLENOIDS_PINS_ACTIVE) || !WITHIN(PARKING_EXTRUDER_SOLENOIDS_PINS_ACTIVE, LOW, HIGH)
+      #error "PARKING_EXTRUDER_SOLENOIDS_PINS_ACTIVE必须定义为HIGH或LOW。"
+    #elif !defined(PARKING_EXTRUDER_SOLENOIDS_DELAY) || !WITHIN(PARKING_EXTRUDER_SOLENOIDS_DELAY, 0, 2000)
+      #error "PARKING_EXTRUDER_SOLENOIDS_DELAY必须在0到2000（毫秒）之间。"
+    #endif
+  #endif
+#endif
+
+/**
+ * 通用切换工具头要求
+ */
+#if ANY(SWITCHING_TOOLHEAD, MAGNETIC_SWITCHING_TOOLHEAD, ELECTROMAGNETIC_SWITCHING_TOOLHEAD)
+  constexpr float thpx[] = SWITCHING_TOOLHEAD_X_POS;
+  static_assert(COUNT(thpx) == EXTRUDERS, "SWITCHING_TOOLHEAD_X_POS必须是一个长度为EXTRUDERS的数组。");
+#endif
+
+/**
+ * 切换工具头要求
+ */
+#if ENABLED(SWITCHING_TOOLHEAD)
+  #ifndef SWITCHING_TOOLHEAD_SERVO_NR
+    #error "SWITCHING_TOOLHEAD需要SWITCHING_TOOLHEAD_SERVO_NR。"
+  #elif EXTRUDERS < 2
+    #error "SWITCHING_TOOLHEAD需要至少2个EXTRUDERS。"
+  #elif NUM_SERVOS < (SWITCHING_TOOLHEAD_SERVO_NR - 1)
+    #if SWITCHING_TOOLHEAD_SERVO_NR == 0
+      #error "SWITCHING_TOOLHEAD_SERVO_NR为0需要NUM_SERVOS >= 1。"
+    #elif SWITCHING_TOOLHEAD_SERVO_NR == 1
+      #error "SWITCHING_TOOLHEAD_SERVO_NR为1需要NUM_SERVOS >= 2。"
+    #elif SWITCHING_TOOLHEAD_SERVO_NR == 2
+      #error "SWITCHING_TOOLHEAD_SERVO_NR为2需要NUM_SERVOS >= 3。"
+    #elif SWITCHING_TOOLHEAD_SERVO_NR == 3
+      #error "SWITCHING_TOOLHEAD_SERVO_NR为3需要NUM_SERVOS >= 4。"
+    #endif
+  #elif !defined(TOOLCHANGE_ZRAISE)
+    #error "SWITCHING_TOOLHEAD需要TOOLCHANGE_ZRAISE。"
+  #elif TOOLCHANGE_ZRAISE < 0
+    #error "TOOLCHANGE_ZRAISE必须为0或更高。"
+  #endif
+#endif
+
+/**
+ * 磁性/电磁切换工具头要求
+ */
+#if ANY(MAGNETIC_SWITCHING_TOOLHEAD, ELECTROMAGNETIC_SWITCHING_TOOLHEAD)
+  #ifndef SWITCHING_TOOLHEAD_Y_POS
+    #error "（电磁）切换工具头需要SWITCHING_TOOLHEAD_Y_POS。"
+  #elif !defined(SWITCHING_TOOLHEAD_X_POS)
+    #error "（电磁）切换工具头需要SWITCHING_TOOLHEAD_X_POS。"
+  #elif !defined(SWITCHING_TOOLHEAD_Y_CLEAR)
+    #error "（电磁）切换工具头需要SWITCHING_TOOLHEAD_Y_CLEAR。"
+  #endif
+#endif
+
+/**
+ * 电磁切换工具头要求
+ */
+#if ENABLED(ELECTROMAGNETIC_SWITCHING_TOOLHEAD)
+  #if ENABLED(EXT_SOLENOID)
+    #error "ELECTROMAGNETIC_SWITCHING_TOOLHEAD和EXT_SOLENOID不兼容。（引脚被重复使用。）"
+  #elif !PIN_EXISTS(SOL0)
+    #error "ELECTROMAGNETIC_SWITCHING_TOOLHEAD需要SOL0_PIN。"
+  #elif !defined(SWITCHING_TOOLHEAD_Z_HOP)
+    #error "ELECTROMAGNETIC_SWITCHING_TOOLHEAD需要SWITCHING_TOOLHEAD_Z_HOP。"
+  #endif
+#endif
+
+/**
+ * 零件冷却风扇复用要求
+ */
+#if HAS_FANMUX && !HAS_FAN0
+  #error "必须定义FAN0_PIN以使用风扇复用。"
+#elif PIN_EXISTS(FANMUX1) && !PIN_EXISTS(FANMUX0)
+  #error "必须先设置FANMUX0_PIN，然后才能设置FANMUX1_PIN。"
+#elif PIN_EXISTS(FANMUX2) && !PINS_EXIST(FANMUX0, FANMUX1)
+  #error "必须先设置FANMUX0_PIN和FANMUX1_PIN，然后才能设置FANMUX2_PIN。"
+#endif
+
+// 风扇起动功率
+#if FAN_KICKSTART_TIME && !WITHIN(FAN_KICKSTART_POWER, 64, 255)
+  #error "FAN_KICKSTART_POWER必须是64到255之间的整数。"
+#endif
+
+/**
+ * 有限的用户可控风扇
+ */
+#if NUM_M106_FANS > FAN_COUNT
+  #error "所选的电路板不支持足够的用户可控风扇。请减少NUM_M106_FANS。"
+#endif
+
+/**
+ * 有限数量的伺服电机
+ */
+#if NUM_SERVOS > NUM_SERVO_PLUGS
+  #error "所选的电路板不支持您的配置所需的足够的伺服电机。请减少NUM_SERVOS。"
+#endif
+
+/**
+ * 伺服电机停用取决于伺服末端停止、切换喷嘴或切换挤出机
+ */
+#if ENABLED(DEACTIVATE_SERVOS_AFTER_MOVE) && NONE(HAS_Z_SERVO_PROBE, POLARGRAPH) && !defined(SWITCHING_NOZZLE_SERVO_NR) && !defined(SWITCHING_EXTRUDER_SERVO_NR) && !defined(SWITCHING_TOOLHEAD_SERVO_NR)
+  #error "DEACTIVATE_SERVOS_AFTER_MOVE需要Z_PROBE_SERVO_NR、切换喷嘴、切换工具头、切换挤出机或POLARGRAPH。"
+#endif
+
+/**
+ * 所需的LCD语言
+ */
+#if HAS_MARLINUI_HD44780 && !defined(DISPLAY_CHARSET_HD44780)
+  #error "您必须将DISPLAY_CHARSET_HD44780设置为JAPANESE、WESTERN或CYRILLIC，以适配您的LCD控制器。"
+#endif
+
+/**
+ * 挤出头温度控制算法 - 只能选择一个！
+ */
+#if ALL(PIDTEMP, MPCTEMP)
+  #error "只能启用PIDTEMP或MPCTEMP中的一个，不能同时启用两者。"
+  #undef MPCTEMP
+  #undef MPC_AUTOTUNE
+  #undef MPC_EDIT_MENU
+  #undef MPC_AUTOTUNE_MENU
+#endif
+
+#if ENABLED(MPC_INCLUDE_FAN)
+  #if !HAS_FAN
+    #error "MPC_INCLUDE_FAN需要至少一个风扇启用。"
+  #endif
+  #if FAN_COUNT < HOTENDS
+    #if COUNT_ENABLED(MPC_FAN_0_ALL_HOTENDS, MPC_FAN_0_ACTIVE_HOTEND) > 1
+      #error "启用MPC_FAN_0_ALL_HOTENDS或MPC_FAN_0_ACTIVE_HOTEND，而不是同时启用两者。"
+    #elif NONE(MPC_FAN_0_ALL_HOTENDS, MPC_FAN_0_ACTIVE_HOTEND)
+      #error "MPC_INCLUDE_FAN需要MPC_FAN_0_ALL_HOTENDS或MPC_FAN_0_ACTIVE_HOTEND以支持多个挤出头的一个风扇。"
+    #endif
+  #endif
+#endif
+
+/**
+ * 加热床选项 - PID vs Limit Switching
+ */
+#if ALL(PIDTEMPBED, BED_LIMIT_SWITCHING)
+  #error "要使用BED_LIMIT_SWITCHING，必须禁用PIDTEMPBED。"
+#endif
+
+// 风扇启动功率
+#if FAN_KICKSTART_TIME && !WITHIN(FAN_KICKSTART_POWER, 64, 255)
+  #error "FAN_KICKSTART_POWER必须是一个从64到255的整数。"
+#endif
+
+/**
+ * 同步的M106/M107检查
+ */
+#if ENABLED(LASER_SYNCHRONOUS_M106_M107)
+  #if FAN_KICKSTART_TIME
+    #error "在LASER_SYNCHRONOUS_M106_M107模式下，FAN_KICKSTART_TIME必须为0（因为激光将始终以最大功率开启）。"
+  #elif FAN_MIN_PWM
+    #error "在LASER_SYNCHRONOUS_M106_M107模式下，FAN_MIN_PWM必须为0（否则激光将永远不会关闭）。"
+  #endif
+#endif
+
+/**
+ * 室温加热选项 - PID vs Limit Switching
+ */
+#if ALL(PIDTEMPCHAMBER, CHAMBER_LIMIT_SWITCHING)
+  #error "要使用CHAMBER_LIMIT_SWITCHING，必须禁用PIDTEMPCHAMBER。"
+#endif
+
+/**
+ * AUTOTEMP
+ */
+#if ENABLED(AUTOTEMP)
+  #ifndef AUTOTEMP_MIN
+    #error "AUTOTEMP需要AUTOTEMP_MIN。"
+  #elif !defined(AUTOTEMP_MAX)
+    #error "AUTOTEMP需要AUTOTEMP_MAX。"
+  #elif !defined(AUTOTEMP_FACTOR)
+    #error "AUTOTEMP需要AUTOTEMP_FACTOR。"
+  #elif AUTOTEMP_MAX < AUTOTEMP_MIN
+    #error "AUTOTEMP_MAX必须大于或等于AUTOTEMP_MIN。"
+  #endif
+#endif
+
+/**
+ * 需要启用最大/最小/特定的步进电机/轴的功能。
+ */
+#if HAS_LEVELING && !HAS_Z_AXIS
+  #error "Marlin中的级调需要三个或更多轴，其中Z轴为垂直轴。"
+#elif ENABLED(CNC_WORKSPACE_PLANES) && !HAS_Z_AXIS
+  #error "CNC_WORKSPACE_PLANES目前需要Z轴。"
+#elif ENABLED(DIRECT_STEPPING) && NUM_AXES > XYZ
+  #error "DIRECT_STEPPING目前不支持多于3个轴（即XYZ）。"
+#elif ENABLED(FOAMCUTTER_XYUV) && !(HAS_I_AXIS && HAS_J_AXIS)
+  #error "FOAMCUTTER_XYUV需要启用I和J步进电机。"
+#elif ENABLED(LINEAR_ADVANCE) && HAS_I_AXIS
+  #error "LINEAR_ADVANCE目前不支持包含I轴。"
+#endif
+
+/**
+ * 仅允许使用不与G代码参数名称冲突的额外轴代码
+ */
+#if HAS_I_AXIS
+  #if !defined(I_MIN_POS) || !defined(I_MAX_POS)
+    #error "I_MIN_POS和I_MAX_POS是I轴所必需的。"
+  #elif !defined(I_HOME_DIR)
+    #error "I_HOME_DIR是I轴所必需的。"
+  #elif HAS_I_ENABLE && !defined(I_ENABLE_ON)
+    #error "I_ENABLE_ON是I步进电机所必需的。"
+  #elif !defined(INVERT_I_DIR)
+    #error "INVERT_I_DIR是I步进电机所必需的。"
+  #endif
+#endif
+#if HAS_J_AXIS
+  #if AXIS5_NAME == AXIS4_NAME
+    #error "AXIS5_NAME必须是唯一的。"
+  #elif ENABLED(AXIS5_ROTATES) && DISABLED(AXIS4_ROTATES)
+    #error "AXIS5_ROTATES需要AXIS4_ROTATES。"
+  #elif !defined(J_MIN_POS) || !defined(J_MAX_POS)
+    #error "J_MIN_POS和J_MAX_POS是J轴所必需的。"
+  #elif !defined(J_HOME_DIR)
+    #error "J_HOME_DIR是J轴所必需的。"
+  #elif HAS_J_ENABLE && !defined(J_ENABLE_ON)
+    #error "J_ENABLE_ON是J步进电机所必需的。"
+  #elif !defined(INVERT_J_DIR)
+    #error "INVERT_J_DIR是J步进电机所必需的。"
+  #endif
+#endif
+#if HAS_K_AXIS
+  #if AXIS6_NAME == AXIS5_NAME || AXIS6_NAME == AXIS4_NAME
+    #error "AXIS6_NAME必须是唯一的。"
+  #elif ENABLED(AXIS6_ROTATES) && DISABLED(AXIS5_ROTATES)
+    #error "AXIS6_ROTATES需要AXIS5_ROTATES。"
+  #elif !defined(K_MIN_POS) || !defined(K_MAX_POS)
+    #error "K_MIN_POS和K_MAX_POS是K轴所必需的。"
+  #elif !defined(K_HOME_DIR)
+    #error "K_HOME_DIR是K轴所必需的。"
+  #elif HAS_K_ENABLE && !defined(K_ENABLE_ON)
+    #error "K_ENABLE_ON是K步进电机所必需的。"
+  #elif !defined(INVERT_K_DIR)
+    #error "INVERT_K_DIR是K步进电机所必需的。"
+  #endif
+#endif
+#if HAS_U_AXIS
+  #if AXIS7_NAME == AXIS6_NAME || AXIS7_NAME == AXIS5_NAME || AXIS7_NAME == AXIS4_NAME
+    #error "AXIS7_NAME必须是唯一的。"
+  #elif ENABLED(AXIS7_ROTATES) && DISABLED(AXIS6_ROTATES)
+    #error "AXIS7_ROTATES需要AXIS6_ROTATES。"
+  #elif !defined(U_MIN_POS) || !defined(U_MAX_POS)
+    #error "U_MIN_POS和U_MAX_POS是U轴所必需的。"
+  #elif !defined(U_HOME_DIR)
+    #error "U_HOME_DIR是U轴所必需的。"
+  #elif HAS_U_ENABLE && !defined(U_ENABLE_ON)
+    #error "U_ENABLE_ON是U步进电机所必需的。"
+  #elif !defined(INVERT_U_DIR)
+    #error "INVERT_U_DIR是U步进电机所必需的。"
+  #endif
+#endif
+#if HAS_V_AXIS
+  #if AXIS8_NAME == AXIS7_NAME || AXIS8_NAME == AXIS6_NAME || AXIS8_NAME == AXIS5_NAME || AXIS8_NAME == AXIS4_NAME
+    #error "AXIS8_NAME必须是唯一的。"
+  #elif ENABLED(AXIS8_ROTATES) && DISABLED(AXIS7_ROTATES)
+    #error "AXIS8_ROTATES需要AXIS7_ROTATES。"
+  #elif !defined(V_MIN_POS) || !defined(V_MAX_POS)
+    #error "V_MIN_POS和V_MAX_POS是V轴所必需的。"
+  #elif !defined(V_HOME_DIR)
+    #error "V_HOME_DIR是V轴所必需的。"
+  #elif HAS_V_ENABLE && !defined(V_ENABLE_ON)
+    #error "V_ENABLE_ON是V步进电机所必需的。"
+  #elif !defined(INVERT_V_DIR)
+    #error "INVERT_V_DIR是V步进电机所必需的。"
+  #endif
+#endif
+#if HAS_W_AXIS
+  #if AXIS9_NAME == AXIS8_NAME || AXIS9_NAME == AXIS7_NAME || AXIS9_NAME == AXIS6_NAME || AXIS9_NAME == AXIS5_NAME || AXIS9_NAME == AXIS4_NAME
+    #error "AXIS9_NAME必须是唯一的。"
+  #elif ENABLED(AXIS9_ROTATES) && DISABLED(AXIS8_ROTATES)
+    #error "AXIS9_ROTATES需要AXIS8_ROTATES。"
+  #elif !defined(W_MIN_POS) || !defined(W_MAX_POS)
+    #error "W_MIN_POS和W_MAX_POS是W轴所必需的。"
+  #elif !defined(W_HOME_DIR)
+    #error "W_HOME_DIR是W轴所必需的。"
+  #elif HAS_W_ENABLE && !defined(W_ENABLE_ON)
+    #error "W_ENABLE_ON是W步进电机所必需的。"
+  #elif !defined(INVERT_W_DIR)
+    #error "INVERT_W_DIR是W步进电机所必需的。"
+  #endif
+#endif
+
+/**
+ * 运动学
+ */
+
+/**
+ * 仅允许定义一种运动学类型
+ */
+#if MANY(DELTA, MORGAN_SCARA, MP_SCARA, AXEL_TPARA, COREXY, COREXZ, COREYZ, COREYX, COREZX, COREZY, MARKFORGED_XY, MARKFORGED_YX, ARTICULATED_ROBOT_ARM, FOAMCUTTER_XYUV, POLAR)
+  #error "请仅启用DELTA，MORGAN_SCARA，MP_SCARA，AXEL_TPARA，COREXY，COREXZ，COREYZ，COREYX，COREZX，COREZY，MARKFORGED_XY，MARKFORGED_YX，ARTICULATED_ROBOT_ARM，FOAMCUTTER_XYUV或POLAR中的一种。"
+#endif
+
+/**
+ * Delta要求
+ */
+#if ENABLED(DELTA)
+  #if ANY(X_HOME_TO_MIN, Y_HOME_TO_MIN, Z_HOME_TO_MIN)
+    #error "DELTA运动学要求将“XYZ”轴归位到最大位置。请将[XYZ]_HOME_DIR设置为1。"
+  #elif ENABLED(ENABLE_LEVELING_FADE_HEIGHT) && DISABLED(AUTO_BED_LEVELING_BILINEAR) && !UBL_SEGMENTED
+    #error "DELTA上启用ENABLE_LEVELING_FADE_HEIGHT需要AUTO_BED_LEVELING_BILINEAR或AUTO_BED_LEVELING_UBL。"
+  #elif ENABLED(DELTA_AUTO_CALIBRATION) && !(HAS_BED_PROBE || HAS_MARLINUI_MENU)
+    #error "DELTA_AUTO_CALIBRATION需要探针或LCD控制器。"
+  #elif ENABLED(DELTA_CALIBRATION_MENU) && !HAS_MARLINUI_MENU
+    #error "DELTA_CALIBRATION_MENU需要LCD控制器。"
+  #elif ABL_USES_GRID
+    #if ((GRID_MAX_POINTS_X) & 1) == 0 || ((GRID_MAX_POINTS_Y) & 1) == 0
+      #error "DELTA要求GRID_MAX_POINTS_X和GRID_MAX_POINTS_Y为奇数。"
+    #elif (GRID_MAX_POINTS_X) < 3
+      #error "DELTA要求GRID_MAX_POINTS_X和GRID_MAX_POINTS_Y为3或更高。"
+    #endif
+  #endif
+#endif
+
+/**
+ * 线段偏差与运动学系统不兼容。
+ */
+#if HAS_JUNCTION_DEVIATION && IS_KINEMATIC
+  #error "DELTA，SCARA和POLAR要求CLASSIC_JERK。"
+#endif
+
+/**
+ * 一些功能不应在皮带打印机上使用
+ */
+#if ALL(BELTPRINTER, HAS_LEVELING)
+  #error "床调平与BELTPRINTER不兼容。"
+#endif
+
+/**
+ * 探针
+ */
+
+/**
+ * 仅允许定义一种探针选项
+ */
+#if 1 < 0 \
+  + (DISABLED(BLTOUCH) && HAS_Z_SERVO_PROBE) \
+  + COUNT_ENABLED(PROBE_MANUALLY, BLTOUCH, BD_SENSOR, FIX_MOUNTED_PROBE, NOZZLE_AS_PROBE, TOUCH_MI_PROBE, SOLENOID_PROBE, Z_PROBE_ALLEN_KEY, Z_PROBE_SLED, RACK_AND_PINION_PROBE, SENSORLESS_PROBING, MAGLEV4, MAG_MOUNTED_PROBE)
+  #error "请仅启用一种探针选项：PROBE_MANUALLY，SENSORLESS_PROBING，BLTOUCH，BD_SENSOR，FIX_MOUNTED_PROBE，NOZZLE_AS_PROBE，TOUCH_MI_PROBE，SOLENOID_PROBE，Z_PROBE_ALLEN_KEY，Z_PROBE_SLED，MAGLEV4，MAG_MOUNTED_PROBE或Z Servo。"
+#endif
+
+#if HAS_BED_PROBE
+
+  /**
+   * Z_PROBE_SLED与DELTA不兼容
+   */
+  #if ALL(Z_PROBE_SLED, DELTA)
+    #error "你不能在DELTA上使用Z_PROBE_SLED。"
+  #endif
+
+  /**
+   * SOLENOID_PROBE要求
+   */
+  #if ENABLED(SOLENOID_PROBE)
+    #if ENABLED(EXT_SOLENOID)
+      #error "SOLENOID_PROBE与EXT_SOLENOID不兼容。"
+    #elif !HAS_SOLENOID_1
+      #error "SOLENOID_PROBE需要SOL1_PIN。"
+    #endif
+  #endif
+
+  /**
+   * 对于Z伺服探针，需要NUM_SERVOS
+   */
+  #if HAS_Z_SERVO_PROBE
+    #if !NUM_SERVOS
+      #error "对于Z伺服探针（Z_PROBE_SERVO_NR），需要NUM_SERVOS。"
+    #elif Z_PROBE_SERVO_NR >= NUM_SERVOS
+      #error "Z_PROBE_SERVO_NR必须小于NUM_SERVOS。"
+    #elif Z_PROBE_SERVO_NR == 0 && !PIN_EXISTS(SERVO0)
+      #error "对于你的伺服或BLTOUCH探针，必须定义SERVO0_PIN。"
+    #elif Z_PROBE_SERVO_NR == 1 && !PIN_EXISTS(SERVO1)
+      #error "对于你的伺服或BLTOUCH探针，必须定义SERVO1_PIN。"
+    #elif Z_PROBE_SERVO_NR == 2 && !PIN_EXISTS(SERVO2)
+      #error "对于你的伺服或BLTOUCH探针，必须定义SERVO2_PIN。"
+    #elif Z_PROBE_SERVO_NR == 3 && !PIN_EXISTS(SERVO3)
+      #error "对于你的伺服或BLTOUCH探针，必须定义SERVO3_PIN。"
+    #endif
+  #endif
+
+  #if ENABLED(BLTOUCH)
+
+    // BLTouch不能在5V模式下与3.3V的探针引脚一起运行
+    #if ENABLED(BLTOUCH_SET_5V_MODE)
+      #define _5V(P,A,B) WITHIN(P,A,B)
+      #ifdef STM32F1            // STM32F103 5V耐受引脚
+        #define _IS_5V_TOLERANT(P) (_5V(P,PA8,PA15) || _5V(P,PB2,PB15) || _5V(P,PC6,PC12) || _5V(P,PD0,PD15) || _5V(P,PE0,PE15) || _5V(P,PF0,PF5) || _5V(P,PF11,PF15))
+      #elif defined(ARDUINO_ARCH_SAM)
+        #define _IS_5V_TOLERANT(P) 0 // 假设没有5V耐受
+      #else
+        #define _IS_5V_TOLERANT(P) 1 // 假设有5V耐受
+      #endif
+      #if USE_Z_MIN_PROBE
+        #if !_IS_5V_TOLERANT(Z_MIN_PROBE_PIN)
+          #error "BLTOUCH_SET_5V_MODE与Z_MIN_PROBE_PIN不兼容。"
+        #endif
+      #elif !_IS_5V_TOLERANT(Z_MIN_PIN)
+        #if !MB(CHITU3D_V6)
+          #error "BLTOUCH_SET_5V_MODE与Z_MIN_PIN不兼容。"
+        #endif
+      #endif
+      #undef _IS_5V_TOLERANT
+      #undef _5V
+    #elif NONE(ONBOARD_ENDSTOPPULLUPS, ENDSTOPPULLUPS, ENDSTOPPULLUP_ZMIN, ENDSTOPPULLUP_ZMIN_PROBE)
+      #if USE_Z_MIN_PROBE
+        #error "在Z_MIN_PROBE_PIN上使用BLTOUCH需要ENDSTOPPULLUP_ZMIN_PROBE，ENDSTOPPULLUPS或BLTOUCH_SET_5V_MODE。"
+      #else
+        #error "在Z_MIN_PIN上使用BLTOUCH需要ENDSTOPPULLUP_ZMIN，ENDSTOPPULLUPS或BLTOUCH_SET_5V_MODE。"
+      #endif
+    #endif
+
+    #if HAS_BLTOUCH_HS_MODE
+      constexpr char hs[] = STRINGIFY(BLTOUCH_HS_MODE);
+      static_assert(!(strcmp(hs, "1") && strcmp(hs, "0x1") && strcmp(hs, "true") && strcmp(hs, "0") && strcmp(hs, "0x0") && strcmp(hs, "false")), \
+         "BLTOUCH_HS_MODE必须定义为true或false，表示默认状态。");
+      #ifdef BLTOUCH_HS_EXTRA_CLEARANCE
+        static_assert(BLTOUCH_HS_EXTRA_CLEARANCE >= 0, "BLTOUCH_HS_MODE要求BLTOUCH_HS_EXTRA_CLEARANCE >= 0。");
+      #endif
+    #endif
+
+    #if BLTOUCH_DELAY < 200
+      #error "BLTOUCH_DELAY小于200是不安全的，不支持。"
+    #endif
+
+    #ifdef DEACTIVATE_SERVOS_AFTER_MOVE
+      #error "BLTOUCH要求禁用DEACTIVATE_SERVOS_AFTER_MOVE。请更新你的Configuration.h文件。"
+    #endif
+
+    #if ENABLED(INVERTED_PROBE_STATE)
+      #if Z_MIN_PROBE_ENDSTOP_HIT_STATE != LOW
+        #error "BLTOUCH要求Z_MIN_PROBE_ENDSTOP_HIT_STATE为LOW。"
+      #endif
+    #elif Z_MIN_PROBE_ENDSTOP_HIT_STATE != HIGH
+      #error "BLTOUCH要求Z_MIN_PROBE_ENDSTOP_HIT_STATE为HIGH。"
+    #endif
+    #if ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN)
+      #if ENABLED(INVERTED_PROBE_STATE)
+        #if Z_MIN_ENDSTOP_HIT_STATE != LOW
+          #error "BLTOUCH要求Z_MIN_ENDSTOP_HIT_STATE为LOW。"
+        #endif
+      #elif Z_MIN_ENDSTOP_HIT_STATE != HIGH
+        #error "BLTOUCH要求Z_MIN_ENDSTOP_HIT_STATE为HIGH。"
+      #endif
+    #endif
+
+  #endif // BLTOUCH
+
+  #if ENABLED(RACK_AND_PINION_PROBE) && !(defined(Z_PROBE_DEPLOY_X) && defined(Z_PROBE_RETRACT_X))
+    #error "RACK_AND_PINION_PROBE需要Z_PROBE_DEPLOY_X和Z_PROBE_RETRACT_X。"
+  #endif
+
+  /**
+   * Touch-MI探针要求
+   */
+  #if ENABLED(TOUCH_MI_PROBE)
+    #if DISABLED(Z_SAFE_HOMING)
+      #error "TOUCH_MI_PROBE需要Z_SAFE_HOMING。"
+    #elif !defined(TOUCH_MI_RETRACT_Z)
+      #error "TOUCH_MI_PROBE需要TOUCH_MI_RETRACT_Z。"
+    #elif defined(Z_AFTER_PROBING)
+      #error "TOUCH_MI_PROBE需要禁用Z_AFTER_PROBING。"
+    #elif Z_CLEARANCE_FOR_HOMING < 10
+      #error "TOUCH_MI_PROBE需要Z_CLEARANCE_FOR_HOMING >= 10。"
+    #elif DISABLED(BABYSTEP_ZPROBE_OFFSET)
+      #error "TOUCH_MI_PROBE需要使用BABYSTEPPING和BABYSTEP_ZPROBE_OFFSET。"
+    #elif !HAS_RESUME_CONTINUE
+      #error "TOUCH_MI_PROBE目前需要一个LCD控制器或EMERGENCY_PARSER。"
+    #endif
+    #if ENABLED(INVERTED_PROBE_STATE)
+      #if Z_MIN_PROBE_ENDSTOP_HIT_STATE != LOW
+        #error "TOUCH_MI_PROBE需要Z_MIN_PROBE_ENDSTOP_HIT_STATE为LOW。"
+      #endif
+    #elif Z_MIN_PROBE_ENDSTOP_HIT_STATE != HIGH
+      #error "TOUCH_MI_PROBE需要Z_MIN_PROBE_ENDSTOP_HIT_STATE为HIGH。"
+    #endif
+    #if ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN)
+      #if ENABLED(INVERTED_PROBE_STATE)
+        #if Z_MIN_ENDSTOP_HIT_STATE != LOW
+          #error "TOUCH_MI_PROBE需要Z_MIN_ENDSTOP_HIT_STATE为LOW。"
+        #endif
+      #elif Z_MIN_ENDSTOP_HIT_STATE != HIGH
+        #error "TOUCH_MI_PROBE需要Z_MIN_ENDSTOP_HIT_STATE为HIGH。"
+      #endif
+    #endif
+  #endif // TOUCH_MI_PROBE
+
+  /**
+   * Mag mounted探针要求
+   */
+  #if ALL(MAG_MOUNTED_PROBE, USE_PROBE_FOR_Z_HOMING) && DISABLED(Z_SAFE_HOMING)
+    #error "如果使用探针来归位Z，则MAG_MOUNTED_PROBE需要Z_SAFE_HOMING。"
+  #endif
+
+  /**
+   * MagLev V4探针要求
+   */
+  #if ENABLED(MAGLEV4)
+    #if !PIN_EXISTS(MAGLEV_TRIGGER)
+      #error "MAGLEV4需要定义MAGLEV_TRIGGER_PIN。"
+    #elif ENABLED(HOMING_Z_WITH_PROBE) && DISABLED(Z_SAFE_HOMING)
+      #error "MAGLEV4需要Z_SAFE_HOMING。"
+    #elif MAGLEV_TRIGGER_DELAY != 15
+      #error "MAGLEV_TRIGGER_DELAY不应更改。注释掉此行以继续。"
+    #endif
+  #endif
+
+  /**
+   * 要求定义引脚选项和引脚
+   */
+  #if ENABLED(SENSORLESS_PROBING)
+    #if ENABLED(DELTA) && !(X_SENSORLESS && Y_SENSORLESS && Z_SENSORLESS)
+      #error "SENSORLESS_PROBING要求在X、Y和Z上使用TMC2130/2160/2209/5130/5160驱动器和{X|Y|Z}_STALL_SENSITIVITY。"
+    #elif !Z_SENSORLESS
+      #error "SENSORLESS_PROBING要求在Z上使用TMC2130/2160/2209/5130/5160驱动器和Z_STALL_SENSITIVITY。"
+    #endif
+  #elif ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN)
+    #if !HAS_Z_MIN_PIN
+      #error "Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN要求定义Z_MIN_PIN。"
+    #elif Z_MIN_PROBE_ENDSTOP_HIT_STATE != Z_MIN_ENDSTOP_HIT_STATE
+      #error "Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN要求Z_MIN_ENDSTOP_HIT_STATE与Z_MIN_PROBE_ENDSTOP_HIT_STATE匹配。"
+    #endif
+  #elif !USE_Z_MIN_PROBE
+    #error "如果未启用Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN，则必须定义Z_MIN_PROBE_PIN。"
+  #endif
+
+  /**
+   * 检查不正确的NOZZLE_TO_PROBE_OFFSET
+   */
+  constexpr xyz_pos_t sanity_nozzle_to_probe_offset = NOZZLE_TO_PROBE_OFFSET;
+  #if ENABLED(NOZZLE_AS_PROBE)
+    static_assert(sanity_nozzle_to_probe_offset.x == 0 && sanity_nozzle_to_probe_offset.y == 0,
+                  "NOZZLE_AS_PROBE要求NOZZLE_TO_PROBE_OFFSET中的XY偏移量都为0。");
+  #elif !IS_KINEMATIC
+    static_assert(PROBING_MARGIN       >= 0, "PROBING_MARGIN必须 >= 0。");
+    static_assert(PROBING_MARGIN_BACK  >= 0, "PROBING_MARGIN_BACK必须 >= 0。");
+    static_assert(PROBING_MARGIN_FRONT >= 0, "PROBING_MARGIN_FRONT必须 >= 0。");
+    static_assert(PROBING_MARGIN_LEFT  >= 0, "PROBING_MARGIN_LEFT必须 >= 0。");
+    static_assert(PROBING_MARGIN_RIGHT >= 0, "PROBING_MARGIN_RIGHT必须 >= 0。");
+  #endif
+
+  #define _MARGIN(A) TERN(IS_KINEMATIC, PRINTABLE_RADIUS, ((A##_BED_SIZE) / 2))
+  static_assert(PROBING_MARGIN       < _MARGIN(X), "PROBING_MARGIN太大。");
+  static_assert(PROBING_MARGIN_BACK  < _MARGIN(Y), "PROBING_MARGIN_BACK太大。");
+  static_assert(PROBING_MARGIN_FRONT < _MARGIN(Y), "PROBING_MARGIN_FRONT太大。");
+  static_assert(PROBING_MARGIN_LEFT  < _MARGIN(X), "PROBING_MARGIN_LEFT太大。");
+  static_assert(PROBING_MARGIN_RIGHT < _MARGIN(X), "PROBING_MARGIN_RIGHT太大。");
+  #undef _MARGIN
+
+  /**
+   * 确保设置了Z升高值
+   */
+  #ifndef Z_CLEARANCE_DEPLOY_PROBE
+    #error "必须定义Z_CLEARANCE_DEPLOY_PROBE用于探针。"
+  #else
+    static_assert(Z_CLEARANCE_DEPLOY_PROBE >= 0, "探针要求Z_CLEARANCE_DEPLOY_PROBE >= 0。");
+  #endif
+  #ifndef Z_CLEARANCE_BETWEEN_PROBES
+    #error "必须定义Z_CLEARANCE_BETWEEN_PROBES用于探针。"
+  #else
+    static_assert(Z_CLEARANCE_BETWEEN_PROBES >= 0, "探针要求Z_CLEARANCE_BETWEEN_PROBES >= 0。");
+  #endif
+  #ifdef Z_AFTER_PROBING
+    static_assert(Z_AFTER_PROBING >= 0, "探针要求Z_AFTER_PROBING >= 0。");
+  #endif
+
+  #if MULTIPLE_PROBING > 0 || EXTRA_PROBING > 0
+    #if MULTIPLE_PROBING == 0
+      #error "EXTRA_PROBING需要MULTIPLE_PROBING。"
+    #elif MULTIPLE_PROBING < 2
+      #error "MULTIPLE_PROBING必须为2或更多。"
+    #elif MULTIPLE_PROBING <= EXTRA_PROBING
+      #error "EXTRA_PROBING必须小于MULTIPLE_PROBING。"
+    #endif
+  #endif
+
+  #if Z_PROBE_LOW_POINT > 0
+    #error "Z_PROBE_LOW_POINT必须小于或等于0。"
+  #endif
+
+  #if ENABLED(PROBE_ACTIVATION_SWITCH)
+    #ifndef PROBE_ACTIVATION_SWITCH_STATE
+      #error "PROBE_ACTIVATION_SWITCH需要定义PROBE_ACTIVATION_SWITCH_STATE。"
+    #elif !PIN_EXISTS(PROBE_ACTIVATION_SWITCH)
+      #error "PROBE_ACTIVATION_SWITCH需要PROBE_ACTIVATION_SWITCH_PIN。"
+    #endif
+  #endif
+
+#else
+
+  /**
+   * 要求床调平和探针测试的某种类型的探针
+   */
+  #if HAS_ABL_NOT_UBL && !PROBE_SELECTED
+    #error "自动床调平需要启用PROBE_MANUALLY、SENSORLESS_PROBING或一个真实的探针。"
+  #endif
+
+  #if ENABLED(Z_MIN_PROBE_REPEATABILITY_TEST)
+    #error "Z_MIN_PROBE_REPEATABILITY_TEST需要一个真实的探针。"
+  #endif
+
+#endif
+
+#if ENABLED(LCD_BED_TRAMMING)
+  #ifndef BED_TRAMMING_INSET_LFRB
+    #error "LCD_BED_TRAMMING需要BED_TRAMMING_INSET_LFRB的值。"
+  #elif ENABLED(BED_TRAMMING_USE_PROBE)
+    #if !HAS_BED_PROBE
+      #error "BED_TRAMMING_USE_PROBE需要一个真实的探针。"
+    #elif ENABLED(SENSORLESS_PROBING)
+      #error "BED_TRAMMING_USE_PROBE与SENSORLESS_PROBING不兼容。"
+    #endif
+  #endif
+#endif
+
+/**
+ * 仅允许定义一种床调平选项
+ */
+#if MANY(AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_3POINT, AUTO_BED_LEVELING_BILINEAR, AUTO_BED_LEVELING_UBL, MESH_BED_LEVELING)
+  #error "请仅选择一种床调平选项：MESH_BED_LEVELING，AUTO_BED_LEVELING_LINEAR，AUTO_BED_LEVELING_3POINT，AUTO_BED_LEVELING_BILINEAR或AUTO_BED_LEVELING_UBL。"
+#endif
+
+/**
+ * 床调平要求
+ */
+
+#if ENABLED(AUTO_BED_LEVELING_UBL)
+
+  /**
+   * 统一床调平
+   */
+
+  #if IS_SCARA
+    #error "AUTO_BED_LEVELING_UBL尚不支持SCARA打印机。"
+  #elif ENABLED(POLAR)
+    #error "AUTO_BED_LEVELING_UBL尚不支持极坐标打印机。"
+  #elif DISABLED(EEPROM_SETTINGS)
+    #error "AUTO_BED_LEVELING_UBL需要启用EEPROM_SETTINGS。"
+  #elif !WITHIN(GRID_MAX_POINTS_X, 3, 255) || !WITHIN(GRID_MAX_POINTS_Y, 3, 255)
+    #error "GRID_MAX_POINTS_[XY]必须介于3和255之间。"
+  #endif
+
+#elif HAS_ABL_NOT_UBL
+
+  /**
+   * 自动床调平
+   */
+
+  /**
+   * Delta和SCARA打印机的床调平选项有限
+   */
+  #if IS_SCARA && DISABLED(AUTO_BED_LEVELING_BILINEAR)
+    #error "SCARA打印机只能使用AUTO_BED_LEVELING_BILINEAR的床调平选项。"
+  #elif ABL_USES_GRID && !(WITHIN(GRID_MAX_POINTS_X, 3, 255) && WITHIN(GRID_MAX_POINTS_Y, 3, 255))
+    #error "GRID_MAX_POINTS_[XY]必须介于3和255之间。"
+  #endif
+
+#elif ENABLED(MESH_BED_LEVELING)
+
+  // 网格床调平
+  #if ENABLED(DELTA)
+    #error "MESH_BED_LEVELING不兼容DELTA打印机。"
+  #elif (GRID_MAX_POINTS_X) > 9 || (GRID_MAX_POINTS_Y) > 9
+    #error "GRID_MAX_POINTS_X和GRID_MAX_POINTS_Y必须小于10，用于MBL。"
+  #endif
+
+#endif
+
+#define _POINT_COUNT (defined(PROBE_PT_1) + defined(PROBE_PT_2) + defined(PROBE_PT_3))
+#if _POINT_COUNT != 0 && _POINT_COUNT != 3
+  #error "使用3个点的过程必须定义所有的XY点（或所有的默认值）。"
+#endif
+#undef _POINT_COUNT
+
+#if ALL(HAS_LEVELING, RESTORE_LEVELING_AFTER_G28, ENABLE_LEVELING_AFTER_G28)
+  #error "只能启用RESTORE_LEVELING_AFTER_G28或ENABLE_LEVELING_AFTER_G28，不能同时启用两者。"
+#endif
+
+#if HAS_MESH && HAS_CLASSIC_JERK
+  static_assert(DEFAULT_ZJERK > 0.1, "低DEFAULT_ZJERK值与基于网格的床调平不兼容。");
+#endif
+#if HAS_MESH && DGUS_LCD_UI_IA_CREALITY && GRID_MAX_POINTS > 25
+  #error "DGUS_LCD_UI IA_CREALITY要求网格点数不超过GRID_MAX_POINTS_X/Y的值为25。"
+#endif
+
+#if ENABLED(G26_MESH_VALIDATION)
+  #if !HAS_EXTRUDERS
+    #error "G26_MESH_VALIDATION需要至少一个挤出机。"
+  #elif !HAS_MESH
+    #error "G26_MESH_VALIDATION需要MESH_BED_LEVELING，AUTO_BED_LEVELING_BILINEAR或AUTO_BED_LEVELING_UBL。"
+  #endif
+#endif
+
+#if ENABLED(MESH_EDIT_GFX_OVERLAY)
+  #if DISABLED(AUTO_BED_LEVELING_UBL)
+    #error "MESH_EDIT_GFX_OVERLAY需要AUTO_BED_LEVELING_UBL。"
+  #elif NONE(HAS_MARLINUI_U8GLIB, IS_DWIN_MARLINUI)
+    #error "MESH_EDIT_GFX_OVERLAY需要图形LCD。"
+  #endif
+#endif
+
+#if ENABLED(G29_RETRY_AND_RECOVER) && NONE(AUTO_BED_LEVELING_3POINT, AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_BILINEAR)
+  #error "G29_RETRY_AND_RECOVER需要AUTO_BED_LEVELING_3POINT，AUTO_BED_LEVELING_LINEAR或AUTO_BED_LEVELING_BILINEAR。"
+#endif
+
+/**
+ * LCD_BED_LEVELING要求
+ */
+#if ENABLED(LCD_BED_LEVELING)
+  #if !HAS_MARLINUI_MENU
+    #error "所选的LCD控制器不支持LCD_BED_LEVELING。"
+  #elif !(ENABLED(MESH_BED_LEVELING) || HAS_ABL_NOT_UBL)
+    #error "LCD_BED_LEVELING需要MESH_BED_LEVELING或AUTO_BED_LEVELING。"
+  #elif ENABLED(MESH_EDIT_MENU) && !HAS_MESH
+    #error "MESH_EDIT_MENU需要MESH_BED_LEVELING，AUTO_BED_LEVELING_BILINEAR或AUTO_BED_LEVELING_UBL。"
+  #endif
+#endif
+
+#if ALL(PREHEAT_BEFORE_PROBING, PREHEAT_BEFORE_LEVELING)
+  #error "在使用PREHEAT_BEFORE_PROBING时禁用PREHEAT_BEFORE_LEVELING。"
+#endif
+
+/**
+ * 归位检查
+ */
+#ifndef HOMING_BUMP_MM
+  #error "缺少必需的设置HOMING_BUMP_MM！"
+#elif !defined(HOMING_BUMP_DIVISOR)
+  #error "缺少必需的设置HOMING_BUMP_DIVISOR！"
+#else
+  constexpr float hbm[] = HOMING_BUMP_MM, hbd[] = HOMING_BUMP_DIVISOR;
+  static_assert(COUNT(hbm) == NUM_AXES, "HOMING_BUMP_MM必须有" _NUM_AXES_STR "个元素（且没有其他元素）。");
+  NUM_AXIS_CODE(
+    static_assert(hbm[X_AXIS] >= 0, "HOMING_BUMP_MM.X必须大于或等于0。"),
+    static_assert(hbm[Y_AXIS] >= 0, "HOMING_BUMP_MM.Y必须大于或等于0。"),
+    static_assert(hbm[Z_AXIS] >= 0, "HOMING_BUMP_MM.Z必须大于或等于0。"),
+    static_assert(hbm[I_AXIS] >= 0, "HOMING_BUMP_MM.I必须大于或等于0。"),
+    static_assert(hbm[J_AXIS] >= 0, "HOMING_BUMP_MM.J必须大于或等于0。"),
+    static_assert(hbm[K_AXIS] >= 0, "HOMING_BUMP_MM.K必须大于或等于0。"),
+    static_assert(hbm[U_AXIS] >= 0, "HOMING_BUMP_MM.U必须大于或等于0。"),
+    static_assert(hbm[V_AXIS] >= 0, "HOMING_BUMP_MM.V必须大于或等于0。"),
+    static_assert(hbm[W_AXIS] >= 0, "HOMING_BUMP_MM.W必须大于或等于0。")
+  );
+  static_assert(COUNT(hbd) == NUM_AXES, "HOMING_BUMP_DIVISOR必须有" _NUM_AXES_STR "个元素（且没有其他元素）。");
+  NUM_AXIS_CODE(
+    static_assert(hbd[X_AXIS] >= 1, "HOMING_BUMP_DIVISOR.X必须大于或等于1。"),
+    static_assert(hbd[Y_AXIS] >= 1, "HOMING_BUMP_DIVISOR.Y必须大于或等于1。"),
+    static_assert(hbd[Z_AXIS] >= 1, "HOMING_BUMP_DIVISOR.Z必须大于或等于1。"),
+    static_assert(hbd[I_AXIS] >= 1, "HOMING_BUMP_DIVISOR.I必须大于或等于1。"),
+    static_assert(hbd[J_AXIS] >= 1, "HOMING_BUMP_DIVISOR.J必须大于或等于1。"),
+    static_assert(hbd[K_AXIS] >= 1, "HOMING_BUMP_DIVISOR.K必须大于或等于1。"),
+    static_assert(hbd[U_AXIS] >= 1, "HOMING_BUMP_DIVISOR.U必须大于或等于1。"),
+    static_assert(hbd[V_AXIS] >= 1, "HOMING_BUMP_DIVISOR.V必须大于或等于1。"),
+    static_assert(hbd[W_AXIS] >= 1, "HOMING_BUMP_DIVISOR.W必须大于或等于1。")
+  );
+#endif
+
+#ifdef HOMING_BACKOFF_POST_MM
+  constexpr float hbp[] = HOMING_BACKOFF_POST_MM;
+  static_assert(COUNT(hbp) == NUM_AXES, "HOMING_BACKOFF_POST_MM必须有" _NUM_AXES_STR "个元素（且没有其他元素）。");
+  NUM_AXIS_CODE(
+    static_assert(hbp[X_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.X必须大于或等于0。"),
+    static_assert(hbp[Y_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.Y必须大于或等于0。"),
+    static_assert(hbp[Z_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.Z必须大于或等于0。"),
+    static_assert(hbp[I_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.I必须大于或等于0。"),
+    static_assert(hbp[J_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.J必须大于或等于0。"),
+    static_assert(hbp[K_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.K必须大于或等于0。"),
+    static_assert(hbp[U_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.U必须大于或等于0。"),
+    static_assert(hbp[V_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.V必须大于或等于0。"),
+    static_assert(hbp[W_AXIS] >= 0, "HOMING_BACKOFF_POST_MM.W必须大于或等于0。")
+  );
+#endif
+
+#define COUNT_SENSORLESS COUNT_ENABLED(Z_SENSORLESS, Z2_SENSORLESS, Z3_SENSORLESS, Z4_SENSORLESS)
+#if COUNT_SENSORLESS && COUNT_SENSORLESS != NUM_Z_STEPPERS
+  #error "所有的Z步进电机必须定义*_STALL_SENSITIVITY才能使用Z无触点归位。"
+#endif
+#undef COUNT_SENSORLESS
+
+#ifdef SENSORLESS_BACKOFF_MM
+  constexpr float sbm[] = SENSORLESS_BACKOFF_MM;
+  static_assert(COUNT(sbm) == NUM_AXES, "SENSORLESS_BACKOFF_MM必须有" _NUM_AXES_STR "个元素（且没有其他元素）。");
+  NUM_AXIS_CODE(
+    static_assert(sbm[X_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.X必须大于或等于0。"),
+    static_assert(sbm[Y_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.Y必须大于或等于0。"),
+    static_assert(sbm[Z_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.Z必须大于或等于0。"),
+    static_assert(sbm[I_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.I必须大于或等于0。"),
+    static_assert(sbm[J_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.J必须大于或等于0。"),
+    static_assert(sbm[K_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.K必须大于或等于0。"),
+    static_assert(sbm[U_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.U必须大于或等于0。"),
+    static_assert(sbm[V_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.V必须大于或等于0。"),
+    static_assert(sbm[W_AXIS] >= 0, "SENSORLESS_BACKOFF_MM.W必须大于或等于0。")
+  );
+#endif
+
+#if ENABLED(CODEPENDENT_XY_HOMING)
+  #if ENABLED(QUICK_HOME)
+    #error "QUICK_HOME与CODEPENDENT_XY_HOMING不兼容。"
+  #elif IS_KINEMATIC
+    #error "CODEPENDENT_XY_HOMING需要笛卡尔设置。"
+  #endif
+#endif
+
+/**
+ * 确保Z_SAFE_HOMING点可达
+ */
+#if ENABLED(Z_SAFE_HOMING)
+  static_assert(WITHIN(Z_SAFE_HOMING_X_POINT, X_MIN_POS, X_MAX_POS), "喷嘴无法到达Z_SAFE_HOMING_X_POINT。");
+  static_assert(WITHIN(Z_SAFE_HOMING_Y_POINT, Y_MIN_POS, Y_MAX_POS), "喷嘴无法到达Z_SAFE_HOMING_Y_POINT。");
+#endif
+
+// 检查安全床调平设置
+#if HAS_SAFE_BED_LEVELING
+  #if defined(SAFE_BED_LEVELING_START_Y) && !defined(SAFE_BED_LEVELING_START_X)
+    #error "如果定义了SAFE_BED_LEVELING_START_Y，则必须也定义SAFE_BED_LEVELING_START_X。"
+  #elif defined(SAFE_BED_LEVELING_START_Z) && !defined(SAFE_BED_LEVELING_START_Y)
+    #error "如果定义了SAFE_BED_LEVELING_START_Z，则必须也定义SAFE_BED_LEVELING_START_Y。"
+  #elif defined(SAFE_BED_LEVELING_START_I) && !defined(SAFE_BED_LEVELING_START_Z)
+    #error "如果定义了SAFE_BED_LEVELING_START_I，则必须也定义SAFE_BED_LEVELING_START_Z。"
+  #elif defined(SAFE_BED_LEVELING_START_J) && !defined(SAFE_BED_LEVELING_START_I)
+    #error "如果定义了SAFE_BED_LEVELING_START_J，则必须也定义SAFE_BED_LEVELING_START_I。"
+  #elif defined(SAFE_BED_LEVELING_START_K) && !defined(SAFE_BED_LEVELING_START_J)
+    #error "如果定义了SAFE_BED_LEVELING_START_K，则必须也定义SAFE_BED_LEVELING_START_J。"
+  #elif defined(SAFE_BED_LEVELING_START_U) && !defined(SAFE_BED_LEVELING_START_K)
+    #error "如果定义了SAFE_BED_LEVELING_START_U，则必须也定义SAFE_BED_LEVELING_START_K。"
+  #elif defined(SAFE_BED_LEVELING_START_V) && !defined(SAFE_BED_LEVELING_START_U)
+    #error "如果定义了SAFE_BED_LEVELING_START_V，则必须也定义SAFE_BED_LEVELING_START_U。"
+  #elif defined(SAFE_BED_LEVELING_START_W) && !defined(SAFE_BED_LEVELING_START_V)
+    #error "如果定义了SAFE_BED_LEVELING_START_W，则必须也定义SAFE_BED_LEVELING_START_V。"
+  #endif
+#endif
+
+/**
+ * 确保DISABLE_[XYZ]与所选归位选项兼容
+ */
+#if HAS_DISABLE_MAIN_AXES && ANY(HOME_AFTER_DEACTIVATE, Z_SAFE_HOMING)
+  #error "DISABLE_[XYZIJKUVW]与HOME_AFTER_DEACTIVATE或Z_SAFE_HOMING不兼容。"
+#endif
+
+/**
+ * 丝径传感器
+ */
+#if ENABLED(FILAMENT_WIDTH_SENSOR)
+  #if !HAS_FILAMENT_WIDTH_SENSOR
+    #error "FILAMENT_WIDTH_SENSOR需要定义FILWIDTH_PIN。"
+  #elif ENABLED(NO_VOLUMETRICS)
+    #error "FILAMENT_WIDTH_SENSOR需要禁用NO_VOLUMETRICS。"
+  #endif
+#endif
+
+/**
+ * 系统功率传感器
+ */
+#if ENABLED(POWER_MONITOR_CURRENT) && !PIN_EXISTS(POWER_MONITOR_CURRENT)
+  #error "POWER_MONITOR_CURRENT需要定义有效的POWER_MONITOR_CURRENT_PIN。"
+#elif ENABLED(POWER_MONITOR_VOLTAGE) && !PIN_EXISTS(POWER_MONITOR_VOLTAGE)
+  #error "POWER_MONITOR_VOLTAGE需要定义POWER_MONITOR_VOLTAGE_PIN。"
+#elif ALL(POWER_MONITOR_CURRENT, POWER_MONITOR_VOLTAGE) && POWER_MONITOR_CURRENT_PIN == POWER_MONITOR_VOLTAGE_PIN
+  #error "POWER_MONITOR_CURRENT_PIN和POWER_MONITOR_VOLTAGE_PIN必须不同。"
+#endif
+
+/**
+ * 体积挤出机限制
+ */
+#if ENABLED(VOLUMETRIC_EXTRUDER_LIMIT)
+  #if ENABLED(NO_VOLUMETRICS)
+    #error "VOLUMETRIC_EXTRUDER_LIMIT需要禁用NO_VOLUMETRICS。"
+  #elif MIN_STEPS_PER_SEGMENT > 1
+    #error "VOLUMETRIC_EXTRUDER_LIMIT与MIN_STEPS_PER_SEGMENT大于1不兼容。"
+  #endif
+#endif
+
+/**
+ * ULTIPANEL编码器
+ */
+#if IS_ULTIPANEL && NONE(IS_NEWPANEL, SR_LCD_2W_NL) && !PIN_EXISTS(SHIFT_CLK)
+  #error "ULTIPANEL控制器需要某种类型的编码器。"
+#endif
+
+#if ENCODER_PULSES_PER_STEP < 0
+  #error "ENCODER_PULSES_PER_STEP不应为负数，使用REVERSE_MENU_DIRECTION代替。"
+#endif
+
+/**
+ * SAV_3DGLCD显示选项
+ */
+#if ENABLED(SAV_3DGLCD)
+  #if NONE(U8GLIB_SSD1306, U8GLIB_SH1106)
+    #error "启用SAV_3DGLCD显示类型：U8GLIB_SSD1306或U8GLIB_SH1106。"
+  #elif ALL(U8GLIB_SSD1306, U8GLIB_SH1106)
+    #error "仅启用一个SAV_3DGLCD显示类型：U8GLIB_SSD1306或U8GLIB_SH1106。"
+  #endif
+#endif
+
+/**
+ * Allen Key（内六角钥匙）
+ * 使用Allen Key探针进行部署时，在z方向上会有大幅度的移动。对于未归位的z轴来说太危险了。
+ */
+#if ALL(Z_HOME_TO_MIN, Z_PROBE_ALLEN_KEY, Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN)
+  #error "无法将Z_PROBE_ALLEN_KEY与Z min限位开关一起归位。"
+#endif
+
+/**
+ * 双X Carriage（双X载架）要求
+ */
+#if ENABLED(DUAL_X_CARRIAGE)
+  #if EXTRUDERS < 2
+    #error "DUAL_X_CARRIAGE需要2个或更多挤出机。"
+  #elif ANY(CORE_IS_XY, CORE_IS_XZ, MARKFORGED_XY, MARKFORGED_YX)
+    #error "DUAL_X_CARRIAGE不能与COREXY、COREYX、COREXZ、COREZX、MARKFORGED_YX或MARKFORGED_XY一起使用。"
+  #elif !GOOD_AXIS_PINS(X2)
+    #error "DUAL_X_CARRIAGE需要定义X2步进电机引脚。"
+  #elif !USE_X_MAX
+    #error "DUAL_X_CARRIAGE需要除了X_MIN_PIN之外还需要定义X_MAX_PIN。"
+  #elif !defined(X2_HOME_POS) || !defined(X2_MIN_POS) || !defined(X2_MAX_POS)
+    #error "DUAL_X_CARRIAGE需要定义X2_HOME_POS、X2_MIN_POS和X2_MAX_POS。"
+  #elif X_HOME_TO_MAX
+    #error "DUAL_X_CARRIAGE需要X_HOME_DIR为1。"
+  #endif
+#endif
+
+#undef GOOD_AXIS_PINS
+
+/**
+ * 确保自动风扇引脚不与风扇引脚冲突
+ */
+
+#if HAS_AUTO_FAN
+  #if HAS_FAN0
+    #if PIN_EXISTS(E0_AUTO_FAN) && E0_AUTO_FAN_PIN == FAN0_PIN
+      #error "您不能将E0_AUTO_FAN_PIN设置为FAN0_PIN。"
+    #elif PIN_EXISTS(E1_AUTO_FAN) && E1_AUTO_FAN_PIN == FAN0_PIN
+      #error "您不能将E1_AUTO_FAN_PIN设置为FAN0_PIN。"
+    #elif PIN_EXISTS(E2_AUTO_FAN) && E2_AUTO_FAN_PIN == FAN0_PIN
+      #error "您不能将E2_AUTO_FAN_PIN设置为FAN0_PIN。"
+    #elif PIN_EXISTS(E3_AUTO_FAN) &&  E3_AUTO_FAN_PIN == FAN0_PIN
+      #error "您不能将E3_AUTO_FAN_PIN设置为FAN0_PIN。"
+    #endif
+  #endif
+#endif
+
+#if HAS_FAN0
+  #if CONTROLLER_FAN_PIN == FAN0_PIN
+    #error "您不能将CONTROLLER_FAN_PIN设置为FAN0_PIN。"
+  #elif ENABLED(FAN_SOFT_PWM_REQUIRED) && DISABLED(FAN_SOFT_PWM)
+    #error "您的主板需要启用FAN_SOFT_PWM。请启用它以继续。"
+  #endif
+#endif
+
+#if ENABLED(USE_CONTROLLER_FAN)
+  #if !HAS_CONTROLLER_FAN
+    #error "USE_CONTROLLER_FAN需要定义CONTROLLER_FAN_PIN。请在Configuration_adv.h中定义。"
+  #elif PIN_EXISTS(E0_AUTO_FAN) && E0_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E0_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #elif PIN_EXISTS(E1_AUTO_FAN) && E1_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E1_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #elif PIN_EXISTS(E2_AUTO_FAN) && E2_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E2_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #elif PIN_EXISTS(E3_AUTO_FAN) && E3_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E3_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #elif PIN_EXISTS(E4_AUTO_FAN) && E4_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E4_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #elif PIN_EXISTS(E5_AUTO_FAN) && E5_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E5_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #elif PIN_EXISTS(E6_AUTO_FAN) && E6_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E6_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #elif PIN_EXISTS(E7_AUTO_FAN) && E7_AUTO_FAN_PIN == CONTROLLER_FAN_PIN
+    #error "您不能将E7_AUTO_FAN_PIN设置为CONTROLLER_FAN_PIN。"
+  #endif
+#endif
+
+/**
+ * 确保FAN_*_PWM值合理
+ */
+#if ANY(HAS_FAN, USE_CONTROLLER_FAN)
+  #if !WITHIN(FAN_MIN_PWM, 0, 255)
+    #error "FAN_MIN_PWM必须是0到255之间的值。"
+  #elif !WITHIN(FAN_MAX_PWM, 0, 255)
+    #error "FAN_MAX_PWM必须是0到255之间的值。"
+  #elif FAN_MIN_PWM > FAN_MAX_PWM
+    #error "FAN_MIN_PWM必须小于或等于FAN_MAX_PWM。"
+  #elif FAN_OFF_PWM > FAN_MIN_PWM
+    #error "FAN_OFF_PWM必须小于或等于FAN_MIN_PWM。"
+  #endif
+#endif
+
+#ifdef REDUNDANT_PART_COOLING_FAN
+  #if FAN_COUNT < 2
+    #error "REDUNDANT_PART_COOLING_FAN需要具有至少两个PWM风扇的主板。"
+  #elif !WITHIN(REDUNDANT_PART_COOLING_FAN, 1, FAN_COUNT - 1)
+    static_assert(false, "REDUNDANT_PART_COOLING_FAN必须在1和" STRINGIFY(DECREMENT(FAN_COUNT)) "之间。");
+  #elif !WITHIN(REDUNDANT_PART_COOLING_FAN + NUM_REDUNDANT_FANS - 1, 1, FAN_COUNT - 1)
+    #error "没有足够的风扇可用于NUM_REDUNDANT_FANS。"
+  #endif
+#endif
+
+/**
+ * Case Light要求
+ */
+#if NEED_CASE_LIGHT_PIN
+  #if !PIN_EXISTS(CASE_LIGHT)
+    #error "CASE_LIGHT_ENABLE需要CASE_LIGHT_PIN，CASE_LIGHT_USE_NEOPIXEL或CASE_LIGHT_USE_RGB_LED。"
+  #elif CASE_LIGHT_PIN == FAN0_PIN
+    #error "CASE_LIGHT_PIN与FAN0_PIN冲突。请解决后继续。"
+  #endif
+#endif
+
+/**
+ * 需要自定义热敏电阻器的设置
+ */
+#if   TEMP_SENSOR_0_IS_CUSTOM && !(defined(HOTEND0_PULLUP_RESISTOR_OHMS) && defined(HOTEND0_RESISTANCE_25C_OHMS) && defined(HOTEND0_BETA))
+  #error "TEMP_SENSOR_0 1000 需要在 Configuration_adv.h 中定义 HOTEND0_PULLUP_RESISTOR_OHMS、HOTEND0_RESISTANCE_25C_OHMS 和 HOTEND0_BETA。"
+#elif TEMP_SENSOR_1_IS_CUSTOM && !(defined(HOTEND1_PULLUP_RESISTOR_OHMS) && defined(HOTEND1_RESISTANCE_25C_OHMS) && defined(HOTEND1_BETA))
+  #error "TEMP_SENSOR_1 1000 需要在 Configuration_adv.h 中定义 HOTEND1_PULLUP_RESISTOR_OHMS、HOTEND1_RESISTANCE_25C_OHMS 和 HOTEND1_BETA。"
+#elif TEMP_SENSOR_2_IS_CUSTOM && !(defined(HOTEND2_PULLUP_RESISTOR_OHMS) && defined(HOTEND2_RESISTANCE_25C_OHMS) && defined(HOTEND2_BETA))
+  #error "TEMP_SENSOR_2 1000 需要在 Configuration_adv.h 中定义 HOTEND2_PULLUP_RESISTOR_OHMS、HOTEND2_RESISTANCE_25C_OHMS 和 HOTEND2_BETA。"
+#elif TEMP_SENSOR_3_IS_CUSTOM && !(defined(HOTEND3_PULLUP_RESISTOR_OHMS) && defined(HOTEND3_RESISTANCE_25C_OHMS) && defined(HOTEND3_BETA))
+  #error "TEMP_SENSOR_3 1000 需要在 Configuration_adv.h 中定义 HOTEND3_PULLUP_RESISTOR_OHMS、HOTEND3_RESISTANCE_25C_OHMS 和 HOTEND3_BETA。"
+#elif TEMP_SENSOR_4_IS_CUSTOM && !(defined(HOTEND4_PULLUP_RESISTOR_OHMS) && defined(HOTEND4_RESISTANCE_25C_OHMS) && defined(HOTEND4_BETA))
+  #error "TEMP_SENSOR_4 1000 需要在 Configuration_adv.h 中定义 HOTEND4_PULLUP_RESISTOR_OHMS、HOTEND4_RESISTANCE_25C_OHMS 和 HOTEND4_BETA。"
+#elif TEMP_SENSOR_5_IS_CUSTOM && !(defined(HOTEND5_PULLUP_RESISTOR_OHMS) && defined(HOTEND5_RESISTANCE_25C_OHMS) && defined(HOTEND5_BETA))
+  #error "TEMP_SENSOR_5 1000 需要在 Configuration_adv.h 中定义 HOTEND5_PULLUP_RESISTOR_OHMS、HOTEND5_RESISTANCE_25C_OHMS 和 HOTEND5_BETA。"
+#elif TEMP_SENSOR_6_IS_CUSTOM && !(defined(HOTEND6_PULLUP_RESISTOR_OHMS) && defined(HOTEND6_RESISTANCE_25C_OHMS) && defined(HOTEND6_BETA))
+  #error "TEMP_SENSOR_6 1000 需要在 Configuration_adv.h 中定义 HOTEND6_PULLUP_RESISTOR_OHMS、HOTEND6_RESISTANCE_25C_OHMS 和 HOTEND6_BETA。"
+#elif TEMP_SENSOR_7_IS_CUSTOM && !(defined(HOTEND7_PULLUP_RESISTOR_OHMS) && defined(HOTEND7_RESISTANCE_25C_OHMS) && defined(HOTEND7_BETA))
+  #error "TEMP_SENSOR_7 1000 需要在 Configuration_adv.h 中定义 HOTEND7_PULLUP_RESISTOR_OHMS、HOTEND7_RESISTANCE_25C_OHMS 和 HOTEND7_BETA。"
+#elif TEMP_SENSOR_BED_IS_CUSTOM && !(defined(BED_PULLUP_RESISTOR_OHMS) && defined(BED_RESISTANCE_25C_OHMS) && defined(BED_BETA))
+  #error "TEMP_SENSOR_BED 1000 需要在 Configuration_adv.h 中定义 BED_PULLUP_RESISTOR_OHMS、BED_RESISTANCE_25C_OHMS 和 BED_BETA。"
+#elif TEMP_SENSOR_CHAMBER_IS_CUSTOM && !(defined(CHAMBER_PULLUP_RESISTOR_OHMS) && defined(CHAMBER_RESISTANCE_25C_OHMS) && defined(CHAMBER_BETA))
+  #error "TEMP_SENSOR_CHAMBER 1000 需要在 Configuration_adv.h 中定义 CHAMBER_PULLUP_RESISTOR_OHMS、CHAMBER_RESISTANCE_25C_OHMS 和 CHAMBER_BETA。"
+#elif TEMP_SENSOR_PROBE_IS_CUSTOM && !(defined(PROBE_PULLUP_RESISTOR_OHMS) && defined(PROBE_RESISTANCE_25C_OHMS) && defined(PROBE_BETA))
+  #error "TEMP_SENSOR_PROBE 1000 需要在 Configuration_adv.h 中定义 PROBE_PULLUP_RESISTOR_OHMS、PROBE_RESISTANCE_25C_OHMS 和 PROBE_BETA。"
+#elif TEMP_SENSOR_BOARD_IS_CUSTOM && !(defined(BOARD_PULLUP_RESISTOR_OHMS) && defined(BOARD_RESISTANCE_25C_OHMS) && defined(BOARD_BETA))
+  #error "TEMP_SENSOR_BOARD 1000 需要在 Configuration_adv.h 中定义 BOARD_PULLUP_RESISTOR_OHMS、BOARD_RESISTANCE_25C_OHMS 和 BOARD_BETA。"
+#elif TEMP_SENSOR_REDUNDANT_IS_CUSTOM && !(defined(REDUNDANT_PULLUP_RESISTOR_OHMS) && defined(REDUNDANT_RESISTANCE_25C_OHMS) && defined(REDUNDANT_BETA))
+  #error "TEMP_SENSOR_REDUNDANT 1000 需要在 Configuration_adv.h 中定义 REDUNDANT_PULLUP_RESISTOR_OHMS、REDUNDANT_RESISTANCE_25C_OHMS 和 REDUNDANT_BETA。"
+#endif
+
+/**
+ * 需要热敏电阻器 66 (Dyze Design / Trianglelab T-D500) 的设置
+ * https://docs.dyzedesign.com/hotends.html#_500-%C2%B0c-thermistor
+ */
+#if ANY_E_SENSOR_IS(66)
+  #define _BAD_MINTEMP(N) (TEMP_SENSOR(N) == 66 && HEATER_##N##_MINTEMP <= 20)
+  #if _BAD_MINTEMP(0)
+    #error "热敏电阻器 66 需要 HEATER_0_MINTEMP > 20。"
+  #elif _BAD_MINTEMP(1)
+    #error "热敏电阻器 66 需要 HEATER_1_MINTEMP > 20。"
+  #elif _BAD_MINTEMP(2)
+    #error "热敏电阻器 66 需要 HEATER_2_MINTEMP > 20。"
+  #elif _BAD_MINTEMP(3)
+    #error "热敏电阻器 66 需要 HEATER_3_MINTEMP > 20。"
+  #elif _BAD_MINTEMP(4)
+    #error "热敏电阻器 66 需要 HEATER_4_MINTEMP > 20。"
+  #elif _BAD_MINTEMP(5)
+    #error "热敏电阻器 66 需要 HEATER_5_MINTEMP > 20。"
+  #elif _BAD_MINTEMP(6)
+    #error "热敏电阻器 66 需要 HEATER_6_MINTEMP > 20。"
+  #elif _BAD_MINTEMP(7)
+    #error "热敏电阻器 66 需要 HEATER_7_MINTEMP > 20。"
+  #endif
+  #if MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED < 5
+    #error "热敏电阻器 66 需要 MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED ≥ 5。"
+  #elif PREHEAT_TIME_HOTEND_MS < 15000
+    #error "热敏电阻器 66 需要 PREHEAT_TIME_HOTEND_MS ≥ 15000，但建议使用30000或更高。"
+  #endif
+  #undef _BAD_MINTEMP
+#endif
+
+#if TEMP_SENSOR_BED == 66 && PREHEAT_TIME_BED_MS < 15000
+  #error "热敏电阻器 66 需要 PREHEAT_TIME_BED_MS ≥ 15000，但建议使用30000或更高。"
+#endif
+
+/**
+ * 需要 MAX31865 设置
+ */
+#if TEMP_SENSOR_0_IS_MAX31865 || (TEMP_SENSOR_REDUNDANT_IS_MAX31865 && REDUNDANT_TEMP_MATCH(SOURCE, E0))
+  #if !defined(MAX31865_SENSOR_WIRES_0) || !WITHIN(MAX31865_SENSOR_WIRES_0, 2, 4)
+    #error "MAX31865_SENSOR_WIRES_0 必须定义为介于2和4之间的整数。"
+  #elif !defined(MAX31865_SENSOR_OHMS_0) || !defined(MAX31865_CALIBRATION_OHMS_0)
+    #error "如果 TEMP_SENSOR_0/TEMP_SENSOR_REDUNDANT 是 MAX31865，则必须设置 MAX31865_SENSOR_OHMS_0 和 MAX31865_CALIBRATION_OHMS_0。"
+  #endif
+#endif
+#if TEMP_SENSOR_1_IS_MAX31865 || (TEMP_SENSOR_REDUNDANT_IS_MAX31865 && REDUNDANT_TEMP_MATCH(SOURCE, E1))
+  #if !defined(MAX31865_SENSOR_WIRES_1) || !WITHIN(MAX31865_SENSOR_WIRES_1, 2, 4)
+    #error "MAX31865_SENSOR_WIRES_1 必须定义为介于2和4之间的整数。"
+  #elif !defined(MAX31865_SENSOR_OHMS_1) || !defined(MAX31865_CALIBRATION_OHMS_1)
+    #error "如果 TEMP_SENSOR_1/TEMP_SENSOR_REDUNDANT 是 MAX31865，则必须设置 MAX31865_SENSOR_OHMS_1 和 MAX31865_CALIBRATION_OHMS_1。"
+  #endif
+#endif
+#if TEMP_SENSOR_2_IS_MAX31865 || (TEMP_SENSOR_REDUNDANT_IS_MAX31865 && REDUNDANT_TEMP_MATCH(SOURCE, E2))
+  #if !defined(MAX31865_SENSOR_WIRES_2) || !WITHIN(MAX31865_SENSOR_WIRES_2, 2, 4)
+    #error "MAX31865_SENSOR_WIRES_2 必须定义为介于2和4之间的整数。"
+  #elif !defined(MAX31865_SENSOR_OHMS_2) || !defined(MAX31865_CALIBRATION_OHMS_2)
+    #error "如果 TEMP_SENSOR_2/TEMP_SENSOR_REDUNDANT 是 MAX31865，则必须设置 MAX31865_SENSOR_OHMS_2 和 MAX31865_CALIBRATION_OHMS_2。"
+  #endif
+#endif
+
+/**
+ * 冗余温度传感器配置
+ */
+#if HAS_TEMP_REDUNDANT
+  #ifndef TEMP_SENSOR_REDUNDANT_SOURCE
+    #error "TEMP_SENSOR_REDUNDANT 需要 TEMP_SENSOR_REDUNDANT_SOURCE。"
+  #elif !defined(TEMP_SENSOR_REDUNDANT_TARGET)
+    #error "TEMP_SENSOR_REDUNDANT 需要 TEMP_SENSOR_REDUNDANT_TARGET。"
+  #elif REDUNDANT_TEMP_MATCH(SOURCE, TEMP_SENSOR_REDUNDANT_TARGET)
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 不能与 TEMP_SENSOR_REDUNDANT_TARGET 相同。"
+  #elif HAS_MULTI_HOTEND && TEMP_SENSOR_REDUNDANT_SOURCE < HOTENDS
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 必须在最后使用的热头 TEMP_SENSOR 之后。"
+  #endif
+
+  #if REDUNDANT_TEMP_MATCH(SOURCE, E0) && HAS_HOTEND
+    #error "如果使用了热头，则 TEMP_SENSOR_REDUNDANT_SOURCE 不能为 E0。E0 总是使用 TEMP_SENSOR_0。"
+  #elif REDUNDANT_TEMP_MATCH(SOURCE, COOLER) && HAS_TEMP_COOLER
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 不能为 COOLER。TEMP_SENSOR_COOLER 正在使用中。"
+  #elif REDUNDANT_TEMP_MATCH(SOURCE, PROBE) && HAS_TEMP_PROBE
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 不能为 PROBE。TEMP_SENSOR_PROBE 正在使用中。"
+  #elif REDUNDANT_TEMP_MATCH(SOURCE, BOARD) && HAS_TEMP_BOARD
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 不能为 BOARD。TEMP_SENSOR_BOARD 正在使用中。"
+  #elif REDUNDANT_TEMP_MATCH(SOURCE, SOC)
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 不能为 SOC。"
+  #elif REDUNDANT_TEMP_MATCH(SOURCE, CHAMBER) && HAS_TEMP_CHAMBER
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 不能为 CHAMBER。TEMP_SENSOR_CHAMBER 正在使用中。"
+  #elif REDUNDANT_TEMP_MATCH(SOURCE, BED) && HAS_TEMP_BED
+    #error "TEMP_SENSOR_REDUNDANT_SOURCE 不能为 BED。TEMP_SENSOR_BED 正在使用中。"
+  #endif
+
+  #if REDUNDANT_TEMP_MATCH(TARGET, E0) && !PIN_EXISTS(TEMP_0)
+    #error "如果未定义 TEMP_0_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E0。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, E1) && !PIN_EXISTS(TEMP_1)
+    #error "如果未定义 TEMP_1_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E1。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, E2) && !PIN_EXISTS(TEMP_2)
+    #error "如果未定义 TEMP_2_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E2。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, E3) && !PIN_EXISTS(TEMP_3)
+    #error "如果未定义 TEMP_3_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E3。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, E4) && !PIN_EXISTS(TEMP_4)
+    #error "如果未定义 TEMP_4_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E4。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, E5) && !PIN_EXISTS(TEMP_5)
+    #error "如果未定义 TEMP_5_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E5。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, E6) && !PIN_EXISTS(TEMP_6)
+    #error "如果未定义 TEMP_6_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E6。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, E7) && !PIN_EXISTS(TEMP_7)
+    #error "如果未定义 TEMP_7_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 E7。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, BED) && !PIN_EXISTS(TEMP_BED)
+    #error "如果未定义 TEMP_BED_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 BED。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, CHAMBER) && !PIN_EXISTS(TEMP_CHAMBER)
+    #error "如果未定义 TEMP_CHAMBER_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 CHAMBER。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, BOARD) && !PIN_EXISTS(TEMP_BOARD)
+    #error "如果未定义 TEMP_BOARD_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 BOARD。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, SOC)
+    #error "TEMP_SENSOR_REDUNDANT_TARGET 不能为 SOC。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, PROBE) && !PIN_EXISTS(TEMP_PROBE)
+    #error "如果未定义 TEMP_PROBE_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 PROBE。"
+  #elif REDUNDANT_TEMP_MATCH(TARGET, COOLER) && !PIN_EXISTS(TEMP_COOLER)
+    #error "如果未定义 TEMP_COOLER_PIN，则 TEMP_SENSOR_REDUNDANT_TARGET 不能为 COOLER。"
+  #endif
+
+  #if TEMP_SENSOR_IS_MAX_TC(REDUNDANT) && REDUNDANT_TEMP_MATCH(SOURCE, E0) && !PIN_EXISTS(TEMP_0_CS)
+    #error "TEMP_SENSOR_REDUNDANT 使用 MAX Thermocouple 并使用 TEMP_SENSOR_REDUNDANT_SOURCE E0 需要 TEMP_0_CS_PIN。"
+  #elif TEMP_SENSOR_IS_MAX_TC(REDUNDANT) && REDUNDANT_TEMP_MATCH(SOURCE, E1) && !PIN_EXISTS(TEMP_1_CS)
+    #error "TEMP_SENSOR_REDUNDANT 使用 MAX Thermocouple 并使用 TEMP_SENSOR_REDUNDANT_SOURCE E1 需要 TEMP_1_CS_PIN。"
+  #endif
+#endif
+
+/**
+ * 必须为每个加热器设置引脚和传感器ID
+ */
+#if HAS_HOTEND
+  #if !HAS_HEATER_0
+    #error "未为此板定义HEATER_0_PIN。"
+  #elif TEMP_SENSOR_IS_MAX_TC(0) && !PIN_EXISTS(TEMP_0_CS)
+    #error "TEMP_SENSOR_0 MAX热电偶需要TEMP_0_CS_PIN。"
+  #elif TEMP_SENSOR_0 == 100
+    #error "TEMP_SENSOR_0不能使用SoC温度传感器。"
+  #elif TEMP_SENSOR_0 == 0
+    #error "在使用一个或多个热端时，TEMP_SENSOR_0是必需的。"
+  #elif !ANY_PIN(TEMP_0, TEMP_0_CS) && !TEMP_SENSOR_0_IS_DUMMY
+    #error "未为此板定义TEMP_0_PIN或TEMP_0_CS_PIN。"
+  #endif
+  #if ANY(HAS_MULTI_HOTEND, HEATERS_PARALLEL) && !HAS_HEATER_1
+    #error "未定义HEATER_1_PIN。可能未设置TEMP_SENSOR_1，或者板（非EEB / EEF？）未定义引脚。"
+  #endif
+  #if HAS_MULTI_HOTEND
+    #if TEMP_SENSOR_IS_MAX_TC(1) && !PIN_EXISTS(TEMP_1_CS)
+      #error "TEMP_SENSOR_1 MAX热电偶需要TEMP_1_CS_PIN。"
+    #elif TEMP_SENSOR_1 == 100
+      #error "TEMP_SENSOR_1不能使用SoC温度传感器。"
+    #elif TEMP_SENSOR_1 == 0
+      #error "在使用两个或多个热端时，TEMP_SENSOR_1是必需的。"
+    #elif !ANY_PIN(TEMP_1, TEMP_1_CS) && !TEMP_SENSOR_1_IS_DUMMY
+      #error "未为此板定义TEMP_1_PIN或TEMP_1_CS_PIN。"
+    #endif
+    #if HOTENDS > 2
+      #if TEMP_SENSOR_2 == 100
+        #error "TEMP_SENSOR_2不能使用SoC温度传感器。"
+      #elif TEMP_SENSOR_2 == 0
+        #error "在使用三个或多个热端时，TEMP_SENSOR_2是必需的。"
+      #elif !HAS_HEATER_2
+        #error "未为此板定义HEATER_2_PIN。"
+      #elif !ANY_PIN(TEMP_2, TEMP_2_CS) && !TEMP_SENSOR_2_IS_DUMMY
+        #error "未为此板定义TEMP_2_PIN或TEMP_2_CS_PIN。"
+      #endif
+      #if HOTENDS > 3
+        #if TEMP_SENSOR_3 == 100
+          #error "TEMP_SENSOR_3不能使用SoC温度传感器。"
+        #elif TEMP_SENSOR_3 == 0
+          #error "在使用四个或多个热端时，TEMP_SENSOR_3是必需的。"
+        #elif !HAS_HEATER_3
+          #error "未为此板定义HEATER_3_PIN。"
+        #elif !PIN_EXISTS(TEMP_3) && !TEMP_SENSOR_3_IS_DUMMY
+          #error "未为此板定义TEMP_3_PIN。"
+        #endif
+        #if HOTENDS > 4
+          #if TEMP_SENSOR_4 == 100
+            #error "TEMP_SENSOR_4不能使用SoC温度传感器。"
+          #elif TEMP_SENSOR_4 == 0
+            #error "在使用五个或更多个热端时，TEMP_SENSOR_4是必需的。"
+          #elif !HAS_HEATER_4
+            #error "未为此板定义HEATER_4_PIN。"
+          #elif !PIN_EXISTS(TEMP_4) && !TEMP_SENSOR_4_IS_DUMMY
+            #error "未为此板定义TEMP_4_PIN。"
+          #endif
+          #if HOTENDS > 5
+            #if TEMP_SENSOR_5 == 100
+              #error "TEMP_SENSOR_5不能使用SoC温度传感器。"
+            #elif TEMP_SENSOR_5 == 0
+              #error "在使用六个热端时，TEMP_SENSOR_5是必需的。"
+            #elif !HAS_HEATER_5
+              #error "未为此板定义HEATER_5_PIN。"
+            #elif !PIN_EXISTS(TEMP_5) && !TEMP_SENSOR_5_IS_DUMMY
+              #error "未为此板定义TEMP_5_PIN。"
+            #endif
+            #if HOTENDS > 6
+              #if TEMP_SENSOR_6 == 100
+                #error "TEMP_SENSOR_6不能使用SoC温度传感器。"
+              #elif TEMP_SENSOR_6 == 0
+                #error "在使用六个热端时，TEMP_SENSOR_6是必需的。"
+              #elif !HAS_HEATER_6
+                #error "未为此板定义HEATER_6_PIN。"
+              #elif !PIN_EXISTS(TEMP_6) && !TEMP_SENSOR_6_IS_DUMMY
+                #error "未为此板定义TEMP_6_PIN。"
+              #endif
+              #if HOTENDS > 7
+                #if TEMP_SENSOR_7 == 100
+                  #error "TEMP_SENSOR_7不能使用SoC温度传感器。"
+                #elif TEMP_SENSOR_7 == 0
+                  #error "在使用七个热端时，TEMP_SENSOR_7是必需的。"
+                #elif !HAS_HEATER_7
+                  #error "未为此板定义HEATER_7_PIN。"
+                #elif !PIN_EXISTS(TEMP_7) && !TEMP_SENSOR_7_IS_DUMMY
+                  #error "未为此板定义TEMP_7_PIN。"
+                #endif
+              #endif // HOTENDS > 7
+            #endif // HOTENDS > 6
+          #endif // HOTENDS > 5
+        #endif // HOTENDS > 4
+      #endif // HOTENDS > 3
+    #endif // HOTENDS > 2
+  #endif // HAS_MULTI_HOTEND
+#endif // HAS_HOTEND
+
+#if DO_TOOLCHANGE_FOR_PROBING && PROBING_TOOL >= EXTRUDERS
+  #error "PROBING_TOOL必须是一个有效的工具索引。"
+#endif
+
+/**
+ * 必须为温度传感器设置引脚，同时满足其他一些功能要求
+ */
+#if TEMP_SENSOR_BED == 100
+  #error "TEMP_SENSOR_BED不能使用SoC温度传感器。"
+#endif
+
+#if TEMP_SENSOR_CHAMBER
+  #if TEMP_SENSOR_CHAMBER == 100
+    #error "TEMP_SENSOR_CHAMBER不能使用SoC温度传感器。"
+  #elif !PIN_EXISTS(TEMP_CHAMBER)
+    #error "TEMP_SENSOR_CHAMBER需要TEMP_CHAMBER_PIN。"
+  #endif
+#endif
+
+#if TEMP_SENSOR_COOLER
+  #if TEMP_SENSOR_COOLER == 100
+    #error "TEMP_SENSOR_COOLER不能使用SoC温度传感器。"
+  #elif !PIN_EXISTS(TEMP_COOLER)
+    #error "TEMP_SENSOR_COOLER需要TEMP_COOLER_PIN。"
+  #elif DISABLED(LASER_FEATURE)
+    #error "TEMP_SENSOR_COOLER需要LASER_FEATURE。"
+  #endif
+#endif
+
+#if TEMP_SENSOR_PROBE
+  #if TEMP_SENSOR_PROBE == 100
+    #error "TEMP_SENSOR_PROBE不能使用SoC温度传感器。"
+  #elif !PIN_EXISTS(TEMP_PROBE)
+    #error "TEMP_SENSOR_PROBE需要TEMP_PROBE_PIN。"
+  #elif DISABLED(FIX_MOUNTED_PROBE)
+    #error "TEMP_SENSOR_PROBE在没有FIX_MOUNTED_PROBE的情况下不应设置。"
+  #endif
+#endif
+
+#if TEMP_SENSOR_BOARD
+  #if TEMP_SENSOR_BOARD == 100
+    #error "TEMP_SENSOR_BOARD不能使用SoC温度传感器。"
+  #elif !PIN_EXISTS(TEMP_BOARD)
+    #error "TEMP_SENSOR_BOARD需要TEMP_BOARD_PIN。"
+  #elif ENABLED(THERMAL_PROTECTION_BOARD) && (!defined(BOARD_MINTEMP) || !defined(BOARD_MAXTEMP))
+    #error "THERMAL_PROTECTION_BOARD需要BOARD_MINTEMP和BOARD_MAXTEMP。"
+  #endif
+#elif CONTROLLER_FAN_MIN_BOARD_TEMP
+  #error "CONTROLLER_FAN_MIN_BOARD_TEMP需要TEMP_SENSOR_BOARD。"
+#endif
+
+#if TEMP_SENSOR_SOC
+  #if TEMP_SENSOR_SOC != 100
+    #error "TEMP_SENSOR_SOC需要TEMP_SENSOR_SOC 100。"
+  #elif !PIN_EXISTS(TEMP_SOC)
+    #error "TEMP_SENSOR_SOC需要TEMP_SOC_PIN。"
+  #elif ENABLED(THERMAL_PROTECTION_SOC) && !defined(SOC_MAXTEMP)
+    #error "THERMAL_PROTECTION_SOC需要SOC_MAXTEMP。"
+  #endif
+#elif CONTROLLER_FAN_MIN_SOC_TEMP
+  #error "CONTROLLER_FAN_MIN_SOC_TEMP需要TEMP_SENSOR_SOC。"
+#endif
+
+#if ENABLED(LASER_COOLANT_FLOW_METER) && !(PIN_EXISTS(FLOWMETER) && ENABLED(LASER_FEATURE))
+  #error "LASER_COOLANT_FLOW_METER需要FLOWMETER_PIN和LASER_FEATURE。"
+#endif
+
+#if ENABLED(CHAMBER_FAN) && !(defined(CHAMBER_FAN_MODE) && WITHIN(CHAMBER_FAN_MODE, 0, 3))
+  #error "CHAMBER_FAN_MODE必须在0和3之间。"
+#endif
+
+#if ENABLED(CHAMBER_VENT)
+  #ifndef CHAMBER_VENT_SERVO_NR
+    #error "CHAMBER_VENT_SERVO_NR是CHAMBER SERVO所必需的。"
+  #elif !NUM_SERVOS
+    #error "CHAMBER VENT SERVO（CHAMBER_VENT_SERVO_NR）需要NUM_SERVOS。"
+  #elif CHAMBER_VENT_SERVO_NR >= NUM_SERVOS
+    #error "CHAMBER_VENT_SERVO_NR必须小于NUM_SERVOS。"
+  #elif HAS_Z_SERVO_PROBE && CHAMBER_VENT_SERVO_NR == Z_PROBE_SERVO_NR
+    #error "CHAMBER SERVO已被BLTOUCH使用。"
+  #elif CHAMBER_VENT_SERVO_NR == 0 && !PIN_EXISTS(SERVO0)
+    #error "对于您的加热腔通风舵机，必须定义SERVO0_PIN。"
+  #elif CHAMBER_VENT_SERVO_NR == 1 && !PIN_EXISTS(SERVO1)
+    #error "对于您的加热腔通风舵机，必须定义SERVO1_PIN。"
+  #elif CHAMBER_VENT_SERVO_NR == 2 && !PIN_EXISTS(SERVO2)
+    #error "对于您的加热腔通风舵机，必须定义SERVO2_PIN。"
+  #elif CHAMBER_VENT_SERVO_NR == 3 && !PIN_EXISTS(SERVO3)
+    #error "对于您的加热腔通风舵机，必须定义SERVO3_PIN。"
+  #endif
+#endif
+
+/**
+ * 温度状态LED
+ */
+#if ENABLED(TEMP_STAT_LEDS) && !ANY_PIN(STAT_LED_RED, STAT_LED_BLUE)
+  #error "TEMP_STAT_LEDS需要STAT_LED_RED_PIN或STAT_LED_BLUE_PIN，最好两者都有。"
+#endif
+
+/**
+ * FYSETC/MKS/BTT Mini面板要求
+ */
+#if ANY(FYSETC_242_OLED_12864, FYSETC_MINI_12864_2_1)
+  #ifndef NEO_RGB
+    #define NEO_RGB 123
+    #define FAUX_RGB 1
+  #endif
+  #if defined(NEOPIXEL_TYPE) && NEOPIXEL_TYPE != NEO_RGB
+    #error "您的FYSETC/MKS/BTT Mini面板需要NEOPIXEL_TYPE设置为NEO_RGB。"
+  #elif defined(NEOPIXEL_PIXELS) && NEOPIXEL_PIXELS < 3
+    #error "您的FYSETC/MKS/BTT Mini面板需要NEOPIXEL_PIXELS >= 3。"
+  #endif
+  #if FAUX_RGB
+    #undef NEO_RGB
+    #undef FAUX_RGB
+  #endif
+#elif ANY(FYSETC_MINI_12864_1_2, FYSETC_MINI_12864_2_0) && DISABLED(RGB_LED)
+  #error "您的FYSETC Mini面板需要RGB_LED。"
+#endif
+
+/**
+ * LED控制菜单要求
+ */
+#if ENABLED(LED_CONTROL_MENU) && !HAS_COLOR_LEDS
+  #error "LED_CONTROL_MENU需要BLINKM、RGB_LED、RGBW_LED、PCA9533、PCA9632或NEOPIXEL_LED。"
+#endif
+
+/**
+ * 基本多喷嘴复制模式
+ */
+#if ENABLED(MULTI_NOZZLE_DUPLICATION)
+  #if ENABLED(SINGLENOZZLE)
+    #error "MULTI_NOZZLE_DUPLICATION与SINGLENOZZLE不兼容。"
+  #elif ENABLED(DUAL_X_CARRIAGE)
+    #error "MULTI_NOZZLE_DUPLICATION与DUAL_X_CARRIAGE不兼容。"
+  #elif ENABLED(MIXING_EXTRUDER)
+    #error "MULTI_NOZZLE_DUPLICATION与MIXING_EXTRUDER不兼容。"
+  #elif HAS_SWITCHING_EXTRUDER
+    #error "MULTI_NOZZLE_DUPLICATION与(MECHANICAL_)SWITCHING_EXTRUDER不兼容。"
+  #elif HOTENDS < 2
+    #error "MULTI_NOZZLE_DUPLICATION需要2个或更多的热端。"
+  #endif
+#endif
+
+/**
+ * 测试挤出机步进引脚
+ */
+#if HAS_EXTRUDERS
+  #if ((defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)) && !PINS_EXIST(E0_STEP, E0_DIR))
+    #error "未为此板定义E0_STEP_PIN或E0_DIR_PIN。"
+  #elif ( !(defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)) && (!PINS_EXIST(E0_STEP, E0_DIR) || !HAS_E0_ENABLE))
+    #error "未为此板定义E0_STEP_PIN、E0_DIR_PIN或E0_ENABLE_PIN。"
+  #elif HOTENDS && TEMP_SENSOR_0 == 0
+    #error "如果有任何热端，TEMP_SENSOR_0是必需的。"
+  #endif
+#endif
+
+#if E_STEPPERS > 0 && !(PINS_EXIST(E0_STEP, E0_DIR) && HAS_E0_ENABLE)
+  #error "未为此板定义E0_STEP_PIN、E0_DIR_PIN或E0_ENABLE_PIN。"
+#endif
+#if E_STEPPERS > 1 && !(PINS_EXIST(E1_STEP, E1_DIR) && HAS_E1_ENABLE)
+  #error "未为此板定义E1_STEP_PIN、E1_DIR_PIN或E1_ENABLE_PIN。"
+#endif
+#if E_STEPPERS > 2 && !(PINS_EXIST(E2_STEP, E2_DIR) && HAS_E2_ENABLE)
+  #error "未为此板定义E2_STEP_PIN、E2_DIR_PIN或E2_ENABLE_PIN。"
+#endif
+#if E_STEPPERS > 3 && !(PINS_EXIST(E3_STEP, E3_DIR) && HAS_E3_ENABLE)
+  #error "未为此板定义E3_STEP_PIN、E3_DIR_PIN或E3_ENABLE_PIN。"
+#endif
+#if E_STEPPERS > 4 && !(PINS_EXIST(E4_STEP, E4_DIR) && HAS_E4_ENABLE)
+  #error "未为此板定义E4_STEP_PIN、E4_DIR_PIN或E4_ENABLE_PIN。"
+#endif
+#if E_STEPPERS > 5 && !(PINS_EXIST(E5_STEP, E5_DIR) && HAS_E5_ENABLE)
+  #error "未为此板定义E5_STEP_PIN、E5_DIR_PIN或E5_ENABLE_PIN。"
+#endif
+#if E_STEPPERS > 6 && !(PINS_EXIST(E6_STEP, E6_DIR) && HAS_E6_ENABLE)
+  #error "未为此板定义E6_STEP_PIN、E6_DIR_PIN或E6_ENABLE_PIN。"
+#endif
+#if E_STEPPERS > 7 && !(PINS_EXIST(E7_STEP, E7_DIR) && HAS_E7_ENABLE)
+  #error "未为此板定义E7_STEP_PIN、E7_DIR_PIN或E7_ENABLE_PIN。"
+#endif
+
+/**
+ * 端点开关测试
+ */
+#if HAS_ENDSTOPS
+  // Delta和Cartesian使用3个归位端点开关
+  #if NONE(IS_SCARA, SPI_ENDSTOPS)
+    #if X_HOME_TO_MIN && !PIN_EXISTS(X_MIN)
+      #error "需要X_MIN_PIN（或X_STOP_PIN）来进行X轴归位。"
+    #elif X_HOME_TO_MAX && !PIN_EXISTS(X_MAX)
+      #error "需要X_MAX_PIN（或X_STOP_PIN）来进行X轴归位。"
+    #elif Y_HOME_TO_MIN && !PIN_EXISTS(Y_MIN)
+      #error "需要Y_MIN_PIN（或Y_STOP_PIN）来进行Y轴归位。"
+    #elif Y_HOME_TO_MAX && !PIN_EXISTS(Y_MAX)
+      #error "需要Y_MAX_PIN（或Y_STOP_PIN）来进行Y轴归位。"
+    #elif I_HOME_TO_MIN && !PIN_EXISTS(I_MIN)
+      #error "需要I_MIN_PIN（或I_STOP_PIN）来进行I轴归位。"
+    #elif I_HOME_TO_MAX && !PIN_EXISTS(I_MAX)
+      #error "需要I_MAX_PIN（或I_STOP_PIN）来进行I轴归位。"
+    #elif J_HOME_TO_MIN && !PIN_EXISTS(J_MIN)
+      #error "需要J_MIN_PIN（或J_STOP_PIN）来进行J轴归位。"
+    #elif J_HOME_TO_MAX && !PIN_EXISTS(J_MAX)
+      #error "需要J_MAX_PIN（或J_STOP_PIN）来进行J轴归位。"
+    #elif K_HOME_TO_MIN && !PIN_EXISTS(K_MIN)
+      #error "需要K_MIN_PIN（或K_STOP_PIN）来进行K轴归位。"
+    #elif K_HOME_TO_MAX && !PIN_EXISTS(K_MAX)
+      #error "需要K_MAX_PIN（或K_STOP_PIN）来进行K轴归位。"
+    #elif U_HOME_TO_MIN && !PIN_EXISTS(U_MIN)
+      #error "需要U_MIN_PIN（或U_STOP_PIN）来进行U轴归位。"
+    #elif U_HOME_TO_MAX && !PIN_EXISTS(U_MAX)
+      #error "需要U_MAX_PIN（或U_STOP_PIN）来进行U轴归位。"
+    #elif V_HOME_TO_MIN && !PIN_EXISTS(V_MIN)
+      #error "需要V_MIN_PIN（或V_STOP_PIN）来进行V轴归位。"
+    #elif V_HOME_TO_MAX && !PIN_EXISTS(V_MAX)
+      #error "需要V_MAX_PIN（或V_STOP_PIN）来进行V轴归位。"
+    #elif W_HOME_TO_MIN && !PIN_EXISTS(W_MIN)
+      #error "需要W_MIN_PIN（或W_STOP_PIN）来进行W轴归位。"
+    #elif W_HOME_TO_MAX && !PIN_EXISTS(W_MAX)
+      #error "需要W_MAX_PIN（或W_STOP_PIN）来进行W轴归位。"
+    #endif
+  #endif
+
+  // Z轴归位的要求
+  #if Z_HOME_TO_MAX && ENABLED(USE_PROBE_FOR_Z_HOMING)
+    #error "使用探针进行Z轴归位时，Z_HOME_DIR必须为-1。"
+  #elif ALL(HOMING_Z_WITH_PROBE, Z_MULTI_ENDSTOPS)
+    #error "Z_MULTI_ENDSTOPS与USE_PROBE_FOR_Z_HOMING不兼容。"
+  #endif
+#endif
+
+#if ALL(HOME_Z_FIRST, USE_PROBE_FOR_Z_HOMING)
+  #error "使用探针进行Z轴归位时，HOME_Z_FIRST不能使用。"
+#endif
+
+#if Z_HOME_TO_MAX && defined(Z_AFTER_HOMING) && DISABLED(ALLOW_Z_AFTER_HOMING)
+  #error "Z_AFTER_HOMING不能与Z轴归位到最大位置同时使用，以保证'G28 Z'在打印结束时的安全使用。如果愿意承担风险，请定义ALLOW_Z_AFTER_HOMING。"
+#endif
+
+// 双/多端点开关的要求
+#if ENABLED(X_DUAL_ENDSTOPS)
+  #if ENABLED(DELTA)
+    #error "X_DUAL_ENDSTOPS与DELTA不兼容。"
+  #elif !HAS_X2_ENDSTOP
+    #error "X_DUAL_ENDSTOPS必须定义X2 Endstop引脚。"
+  #endif
+#endif
+#if ENABLED(Y_DUAL_ENDSTOPS)
+  #if ENABLED(DELTA)
+    #error "Y_DUAL_ENDSTOPS与DELTA不兼容。"
+  #elif !HAS_Y2_ENDSTOP
+    #error "Y_DUAL_ENDSTOPS必须定义Y2 Endstop引脚。"
+  #endif
+#endif
+#if ENABLED(Z_MULTI_ENDSTOPS)
+  #if ENABLED(DELTA)
+    #error "Z_MULTI_ENDSTOPS与DELTA不兼容。"
+  #elif !HAS_Z2_ENDSTOP
+    #error "Z_MULTI_ENDSTOPS必须定义Z2 Endstop引脚。"
+  #elif NUM_Z_STEPPERS >= 3 && !HAS_Z3_ENDSTOP
+    #error "Z_MULTI_ENDSTOPS和Z3_DRIVER_TYPE必须定义Z3 Endstop引脚。"
+  #elif NUM_Z_STEPPERS >= 4 && !HAS_Z4_ENDSTOP
+    #error "Z_MULTI_ENDSTOPS和Z4_DRIVER_TYPE必须定义Z4 Endstop引脚。"
+  #endif
+#endif
+
+#if defined(ENDSTOP_NOISE_THRESHOLD) && !WITHIN(ENDSTOP_NOISE_THRESHOLD, 2, 7)
+  #error "ENDSTOP_NOISE_THRESHOLD必须是一个从2到7的整数。"
+#endif
+
+/**
+ * 紧急命令解析器
+ */
+#if ENABLED(EMERGENCY_PARSER) && defined(__AVR__) && defined(USBCON)
+  #error "在使用AT90USB处理器（USBCON）的板子上，EMERGENCY_PARSER无法工作。"
+#endif
+
+/**
+ * 软件复位选项
+ */
+#if ENABLED(SOFT_RESET_VIA_SERIAL) && DISABLED(EMERGENCY_PARSER)
+  #error "需要EMERGENCY_PARSER来激活SOFT_RESET_VIA_SERIAL。"
+#endif
+#if ENABLED(SOFT_RESET_ON_KILL) && !BUTTON_EXISTS(ENC)
+  #error "需要编码器按钮，否则SOFT_RESET_ON_KILL会在没有通知的情况下重置打印机！"
+#endif
+
+// AVR的复位原因
+#if ENABLED(OPTIBOOT_RESET_REASON) && !defined(__AVR__)
+  #error "OPTIBOOT_RESET_REASON仅适用于AVR。"
+#endif
+
+/**
+ * I2C总线
+ */
+#if ENABLED(EXPERIMENTAL_I2CBUS) && I2C_SLAVE_ADDRESS > 0
+  #if I2C_SLAVE_ADDRESS < 8
+    #error "I2C_SLAVE_ADDRESS不能小于8。（地址0-7是保留地址。）"
+  #elif I2C_SLAVE_ADDRESS > 127
+    #error "I2C_SLAVE_ADDRESS不能大于127。（只有7位有效。）"
+  #endif
+#endif
+
+/**
+ * G35辅助调平
+ */
+#if ENABLED(ASSISTED_TRAMMING) && !HAS_BED_PROBE
+  #error "ASSISTED_TRAMMING需要床探针。"
+#endif
+
+/**
+ * G38探针目标
+ */
+#if ENABLED(G38_PROBE_TARGET)
+  #if !HAS_BED_PROBE
+    #error "G38_PROBE_TARGET需要床探针。"
+  #elif !IS_CARTESIAN
+    #error "G38_PROBE_TARGET需要直角坐标机器。"
+  #endif
+#endif
+
+/**
+ * RGB_LED要求
+ */
+#define _RGB_TEST (PINS_EXIST(RGB_LED_R, RGB_LED_G, RGB_LED_B))
+#if ENABLED(PRINTER_EVENT_LEDS) && !HAS_COLOR_LEDS
+  #error "PRINTER_EVENT_LEDS需要BLINKM、PCA9533、PCA9632、RGB_LED、RGBW_LED或NEOPIXEL_LED。"
+#elif ENABLED(RGB_LED)
+  #if !_RGB_TEST
+    #error "RGB_LED需要RGB_LED_R_PIN、RGB_LED_G_PIN和RGB_LED_B_PIN。"
+  #elif ENABLED(RGBW_LED)
+    #error "请只启用RGB_LED和RGBW_LED中的一个。"
+  #endif
+#elif ENABLED(RGBW_LED)
+  #if !(_RGB_TEST && PIN_EXISTS(RGB_LED_W))
+    #error "RGBW_LED需要RGB_LED_R_PIN、RGB_LED_G_PIN、RGB_LED_B_PIN和RGB_LED_W_PIN。"
+  #endif
+#endif
+#undef _RGB_TEST
+
+// NeoPixel要求
+#if ENABLED(NEOPIXEL_LED)
+  #if !PIN_EXISTS(NEOPIXEL) || NEOPIXEL_PIXELS == 0
+    #error "NEOPIXEL_LED需要NEOPIXEL_PIN和NEOPIXEL_PIXELS。"
+  #elif ENABLED(NEOPIXEL2_SEPARATE) && !(defined(NEOPIXEL2_TYPE) && PIN_EXISTS(NEOPIXEL2) && NEOPIXEL2_PIXELS > 0)
+    #error "NEOPIXEL2_SEPARATE需要NEOPIXEL2_TYPE、NEOPIXEL2_PIN和NEOPIXEL2_PIXELS。"
+  #elif ENABLED(NEO2_COLOR_PRESETS) && DISABLED(NEOPIXEL2_SEPARATE)
+    #error "NEO2_COLOR_PRESETS需要启用NEOPIXEL2_SEPARATE。"
+  #endif
+#endif
+
+#if DISABLED(NO_COMPILE_TIME_PWM)
+  #define _TEST_PWM(P) PWM_PIN(P)
+#else
+  #define _TEST_PWM(P) 1 // 通过
+#endif
+
+/**
+ * 对于PWM引脚的自动风扇检查
+ */
+#if HAS_AUTO_FAN && EXTRUDER_AUTO_FAN_SPEED != 255
+  #define AF_ASSERT(N) OPTCODE(HAS_AUTO_FAN_##N, static_assert(_TEST_PWM(E##N##_AUTO_FAN_PIN), "E" STRINGIFY(N) "_AUTO_FAN_PIN不是PWM引脚。将EXTRUDER_AUTO_FAN_SPEED设置为255。"))
+  REPEAT(8, AF_ASSERT)
+  #undef AF_ASSERT
+#endif
+
+/**
+ * 风扇检查
+ */
+#if HAS_FANCHECK
+  #if ALL(E0_FAN_TACHO_PULLUP, E0_FAN_TACHO_PULLDOWN)
+    #error "只能启用E0_FAN_TACHO_PULLUP或E0_FAN_TACHO_PULLDOWN中的一个。"
+  #elif ALL(E1_FAN_TACHO_PULLUP, E1_FAN_TACHO_PULLDOWN)
+    #error "只能启用E1_FAN_TACHO_PULLUP或E1_FAN_TACHO_PULLDOWN中的一个。"
+  #elif ALL(E2_FAN_TACHO_PULLUP, E2_FAN_TACHO_PULLDOWN)
+    #error "只能启用E2_FAN_TACHO_PULLUP或E2_FAN_TACHO_PULLDOWN中的一个。"
+  #elif ALL(E3_FAN_TACHO_PULLUP, E3_FAN_TACHO_PULLDOWN)
+    #error "只能启用E3_FAN_TACHO_PULLUP或E3_FAN_TACHO_PULLDOWN中的一个。"
+  #elif ALL(E4_FAN_TACHO_PULLUP, E4_FAN_TACHO_PULLDOWN)
+    #error "只能启用E4_FAN_TACHO_PULLUP或E4_FAN_TACHO_PULLDOWN中的一个。"
+  #elif ALL(E5_FAN_TACHO_PULLUP, E5_FAN_TACHO_PULLDOWN)
+    #error "只能启用E5_FAN_TACHO_PULLUP或E5_FAN_TACHO_PULLDOWN中的一个。"
+  #elif ALL(E6_FAN_TACHO_PULLUP, E6_FAN_TACHO_PULLDOWN)
+    #error "只能启用E6_FAN_TACHO_PULLUP或E6_FAN_TACHO_PULLDOWN中的一个。"
+  #elif ALL(E7_FAN_TACHO_PULLUP, E7_FAN_TACHO_PULLDOWN)
+    #error "只能启用E7_FAN_TACHO_PULLUP或E7_FAN_TACHO_PULLDOWN中的一个。"
+  #endif
+#elif ENABLED(AUTO_REPORT_FANS)
+  #error "AUTO_REPORT_FANS需要一个或多个带有转速计引脚的风扇。"
+#endif
+
+/**
+ * 确保只启用一种EEPROM类型
+ */
+#if ENABLED(EEPROM_SETTINGS)
+  #if 1 < 0 \
+    + ENABLED(I2C_EEPROM) \
+    + ENABLED(SPI_EEPROM) \
+    + ENABLED(QSPI_EEPROM) \
+    + ENABLED(SDCARD_EEPROM_EMULATION) \
+    + ENABLED(FLASH_EEPROM_EMULATION) \
+    + ENABLED(SRAM_EEPROM_EMULATION) \
+    + ENABLED(IIC_BL24CXX_EEPROM)
+    #error "请仅选择一种EEPROM持久存储方法。"
+  #endif
+#endif
+
+/**
+ * 确保需要写入SD卡的功能可以使用
+ */
+#if ENABLED(SDCARD_READONLY)
+  #if ENABLED(POWER_LOSS_RECOVERY)
+    #error "请禁用SDCARD_READONLY或禁用POWER_LOSS_RECOVERY。"
+  #elif ENABLED(BINARY_FILE_TRANSFER)
+    #error "请禁用SDCARD_READONLY或禁用BINARY_FILE_TRANSFER。"
+  #elif ENABLED(SDCARD_EEPROM_EMULATION)
+    #error "请禁用SDCARD_READONLY或禁用SDCARD_EEPROM_EMULATION。"
+  #endif
+#endif
+
+#if ENABLED(SD_IGNORE_AT_STARTUP)
+  #if ENABLED(POWER_LOSS_RECOVERY)
+    #error "SD_IGNORE_AT_STARTUP与POWER_LOSS_RECOVERY不兼容。"
+  #elif ENABLED(SDCARD_EEPROM_EMULATION)
+    #error "SD_IGNORE_AT_STARTUP与SDCARD_EEPROM_EMULATION不兼容。"
+  #endif
+#endif
+
+/**
+ * 确保只启用一个显示器
+ */
+#if 1 < 0 \
+  + ENABLED(REPRAP_DISCOUNT_SMART_CONTROLLER) \
+  + ENABLED(REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER) \
+  + (ENABLED(U8GLIB_SSD1306) && DISABLED(IS_U8GLIB_SSD1306)) \
+  + (ENABLED(MINIPANEL) && NONE(MKS_MINI_12864, ENDER2_STOCKDISPLAY)) \
+  + (ENABLED(MKS_MINI_12864) && NONE(MKS_LCD12864A, MKS_LCD12864B)) \
+  + (ENABLED(FYSETC_MINI_12864_2_1) && NONE(MKS_MINI_12864_V3, BTT_MINI_12864_V1)) \
+  + COUNT_ENABLED(MKS_MINI_12864_V3, BTT_MINI_12864_V1) \
+  + (ENABLED(EXTENSIBLE_UI) && DISABLED(IS_EXTUI)) \
+  + (DISABLED(IS_LEGACY_TFT) && ENABLED(TFT_GENERIC)) \
+  + (ENABLED(IS_LEGACY_TFT) && COUNT_ENABLED(TFT_320x240, TFT_320x240_SPI, TFT_480x320, TFT_480x320_SPI)) \
+  + COUNT_ENABLED(ANYCUBIC_LCD_I3MEGA, ANYCUBIC_LCD_CHIRON, ANYCUBIC_TFT35, ANYCUBIC_LCD_VYPER) \
+  + DGUS_UI_IS(ORIGIN) + DGUS_UI_IS(FYSETC) + DGUS_UI_IS(HIPRECY) + DGUS_UI_IS(MKS) + DGUS_UI_IS(RELOADED) + DGUS_UI_IS(IA_CREALITY) \
+  + COUNT_ENABLED(ENDER2_STOCKDISPLAY, CR10_STOCKDISPLAY) \
+  + COUNT_ENABLED(DWIN_CREALITY_LCD, DWIN_LCD_PROUI, DWIN_CREALITY_LCD_JYERSUI, DWIN_MARLINUI_PORTRAIT, DWIN_MARLINUI_LANDSCAPE) \
+  + COUNT_ENABLED(FYSETC_MINI_12864_X_X, FYSETC_MINI_12864_1_2, FYSETC_MINI_12864_2_0, FYSETC_GENERIC_12864_1_1) \
+  + COUNT_ENABLED(LCD_SAINSMART_I2C_1602, LCD_SAINSMART_I2C_2004) \
+  + COUNT_ENABLED(MKS_12864OLED, MKS_12864OLED_SSD1306) \
+  + COUNT_ENABLED(MKS_TS35_V2_0, MKS_ROBIN_TFT24, MKS_ROBIN_TFT28, MKS_ROBIN_TFT32, MKS_ROBIN_TFT35, MKS_ROBIN_TFT43, \
+                  MKS_ROBIN_TFT_V1_1R, ANET_ET4_TFT28, ANET_ET5_TFT35, BIQU_BX_TFT70, BTT_TFT35_SPI_V1_0) \
+  + COUNT_ENABLED(TFTGLCD_PANEL_SPI, TFTGLCD_PANEL_I2C) \
+  + COUNT_ENABLED(VIKI2, miniVIKI) \
+  + ENABLED(WYH_L12864) \
+  + COUNT_ENABLED(ZONESTAR_12864LCD, ZONESTAR_12864OLED, ZONESTAR_12864OLED_SSD1306) \
+  + COUNT_ENABLED(ANET_FULL_GRAPHICS_LCD, ANET_FULL_GRAPHICS_LCD_ALT_WIRING) \
+  + ENABLED(AZSMZ_12864) \
+  + ENABLED(BQ_LCD_SMART_CONTROLLER) \
+  + ENABLED(CARTESIO_UI) \
+  + ENABLED(ELB_FULL_GRAPHIC_CONTROLLER) \
+  + ENABLED(FF_INTERFACEBOARD) \
+  + ENABLED(FYSETC_242_OLED_12864) \
+  + ENABLED(G3D_PANEL) \
+  + ENABLED(LCD_FOR_MELZI) \
+  + ENABLED(LCD_I2C_PANELOLU2) \
+  + ENABLED(LCD_I2C_VIKI) \
+  + ENABLED(LCM1602) \
+  + ENABLED(LONGER_LK_TFT28) \
+  + ENABLED(MAKEBOARD_MINI_2_LINE_DISPLAY_1602) \
+  + ENABLED(MAKRPANEL) \
+  + ENABLED(MALYAN_LCD) \
+  + ENABLED(NEXTION_TFT) \
+  + ENABLED(MKS_LCD12864A) \
+  + ENABLED(MKS_LCD12864B) \
+  + ENABLED(OLED_PANEL_TINYBOY2) \
+  + ENABLED(OVERLORD_OLED) \
+  + ENABLED(PANEL_ONE) \
+  + ENABLED(RA_CONTROL_PANEL) \
+  + ENABLED(RADDS_DISPLAY) \
+  + ENABLED(REPRAPWORLD_GRAPHICAL_LCD) \
+  + ENABLED(RIGIDBOT_PANEL) \
+  + ENABLED(SAV_3DGLCD) \
+  + ENABLED(SAV_3DLCD) \
+  + ENABLED(SILVER_GATE_GLCD_CONTROLLER) \
+  + ENABLED(TFT_TRONXY_X5SA) \
+  + ENABLED(TOUCH_UI_FTDI_EVE) \
+  + ENABLED(U8GLIB_SH1106_EINSTART) \
+  + ENABLED(ULTI_CONTROLLER) \
+  + ENABLED(ULTIMAKERCONTROLLER) \
+  + ENABLED(ULTIPANEL) \
+  + ENABLED(ULTRA_LCD) \
+  + ENABLED(YHCB2004) \
+  + ENABLED(ZONESTAR_LCD) \
+  + ENABLED(K3D_FULL_GRAPHIC_SMART_CONTROLLER) \
+  + ENABLED(K3D_242_OLED_CONTROLLER)
+  #error "请仅选择一个LCD控制器选项。"
+#endif
+
+#undef IS_U8GLIB_SSD1306
+#undef IS_EXTUI
+
+#if ANY(TFT_GENERIC, MKS_TS35_V2_0, MKS_ROBIN_TFT24, MKS_ROBIN_TFT28, MKS_ROBIN_TFT32, MKS_ROBIN_TFT35, MKS_ROBIN_TFT43, MKS_ROBIN_TFT_V1_1R, \
+        TFT_TRONXY_X5SA, ANYCUBIC_TFT35, ANYCUBIC_TFT35, LONGER_LK_TFT28, ANET_ET4_TFT28, ANET_ET5_TFT35, BIQU_BX_TFT70, BTT_TFT35_SPI_V1_0)
+  #if NONE(TFT_COLOR_UI, TFT_CLASSIC_UI, TFT_LVGL_UI)
+    #error "TFT_COLOR_UI、TFT_CLASSIC_UI或TFT_LVGL_UI是您的TFT所需的。请启用其中一个。"
+  #elif MANY(TFT_COLOR_UI, TFT_CLASSIC_UI, TFT_LVGL_UI)
+    #error "请仅选择TFT_COLOR_UI、TFT_CLASSIC_UI或TFT_LVGL_UI中的一个。"
+  #endif
+#elif ANY(TFT_COLOR_UI, TFT_CLASSIC_UI, TFT_LVGL_UI)
+  #error "TFT_(COLOR|CLASSIC|LVGL)_UI需要启用TFT显示。"
+#endif
+
+#if ENABLED(TFT_GENERIC) && NONE(TFT_INTERFACE_FSMC, TFT_INTERFACE_SPI)
+  #error "TFT_GENERIC需要TFT_INTERFACE_FSMC或TFT_INTERFACE_SPI接口。"
+#elif ALL(TFT_INTERFACE_FSMC, TFT_INTERFACE_SPI)
+  #error "请仅选择TFT_INTERFACE_FSMC或TFT_INTERFACE_SPI中的一个。"
+#endif
+
+#if defined(LCD_SCREEN_ROTATE) && LCD_SCREEN_ROTATE != 0 && LCD_SCREEN_ROTATE != 90 && LCD_SCREEN_ROTATE != 180 && LCD_SCREEN_ROTATE != 270
+  #error "LCD_SCREEN_ROTATE必须为0、90、180或270。"
+#endif
+
+#if MANY(TFT_RES_320x240, TFT_RES_480x272, TFT_RES_480x320, TFT_RES_1024x600)
+  #error "请仅选择TFT_RES_320x240、TFT_RES_480x272、TFT_RES_480x320或TFT_RES_1024x600中的一个。"
+#endif
+
+#if ENABLED(TFT_LVGL_UI)
+  #if DISABLED(TFT_RES_480x320)
+    #error "TFT_LVGL_UI需要TFT_RES_480x320。"
+  #elif !HAS_MEDIA
+    #error "TFT_LVGL_UI需要SDSUPPORT。"
+  #endif
+#endif
+
+#if defined(GRAPHICAL_TFT_UPSCALE) && !WITHIN(GRAPHICAL_TFT_UPSCALE, 2, 8)
+  #error "GRAPHICAL_TFT_UPSCALE必须介于2到8之间。"
+#endif
+
+#if ALL(CHIRON_TFT_STANDARD, CHIRON_TFT_NEW)
+  #error "请仅选择CHIRON_TFT_STANDARD或CHIRON_TFT_NEW中的一个。"
+#endif
+
+#if ENABLED(ANYCUBIC_LCD_CHIRON)
+  #ifndef BEEPER_PIN
+    #error "ANYCUBIC_LCD_CHIRON需要BEEPER_PIN"
+  #elif !HAS_MEDIA
+    #error "ANYCUBIC_LCD_CHIRON需要SDSUPPORT"
+  #elif TEMP_SENSOR_BED == 0
+    #error "ANYCUBIC_LCD_CHIRON需要热床（TEMP_SENSOR_BED）"
+  #elif NONE(AUTO_BED_LEVELING_BILINEAR, AUTO_BED_LEVELING_UBL, MESH_BED_LEVELING)
+    #error "ANYCUBIC_LCD_CHIRON需要以下之一：AUTO_BED_LEVELING_BILINEAR，AUTO_BED_LEVELING_UBL或MESH_BED_LEVELING"
+  #elif DISABLED(BABYSTEPPING)
+    #error "ANYCUBIC_LCD_CHIRON需要BABYSTEPPING"
+  #endif
+#endif
+
+#if ENABLED(ANYCUBIC_LCD_VYPER)
+  static_assert(strcmp(STRINGIFY(LCD_LANGUAGE_2), "zh_CN") == 0, "LCD_LANGUAGE_2必须设置为zh_CN以使ANYCUBIC_LCD_VYPER正常工作。");
+#endif
+
+#if ANY(MKS_TS35_V2_0, BTT_TFT35_SPI_V1_0) && SD_CONNECTION_IS(LCD)
+  #error "对于已启用的TFT，SDCARD_CONNECTION不能设置为LCD。没有可用的SD卡读卡器。"
+#endif
+
+/**
+ * Ender-3 V2控制器有一些限制
+ */
+#if ENABLED(DWIN_CREALITY_LCD)
+  #if !HAS_MEDIA
+    #error "DWIN_CREALITY_LCD需要启用SDSUPPORT。"
+  #elif ANY(PID_EDIT_MENU, PID_AUTOTUNE_MENU)
+    #error "DWIN_CREALITY_LCD不支持PID_EDIT_MENU或PID_AUTOTUNE_MENU。"
+  #elif ANY(MPC_EDIT_MENU, MPC_AUTOTUNE_MENU)
+    #error "DWIN_CREALITY_LCD不支持MPC_EDIT_MENU或MPC_AUTOTUNE_MENU。"
+  #elif ENABLED(LCD_BED_TRAMMING)
+    #error "DWIN_CREALITY_LCD不支持LCD_BED_TRAMMING。"
+  #elif ALL(LCD_BED_LEVELING, PROBE_MANUALLY)
+    #error "DWIN_CREALITY_LCD不支持LCD_BED_LEVELING和PROBE_MANUALLY。"
+  #endif
+#elif ENABLED(DWIN_LCD_PROUI)
+  #if !HAS_MEDIA
+    #error "DWIN_LCD_PROUI需要启用SDSUPPORT。"
+  #elif ALL(LCD_BED_LEVELING, PROBE_MANUALLY)
+    #error "DWIN_LCD_PROUI不支持LCD_BED_LEVELING和PROBE_MANUALLY。"
+  #elif ENABLED(MEDIASORT_MENU_ITEM) && DISABLED(SDCARD_SORT_ALPHA)
+    #error "MEDIASORT_MENU_ITEM需要SDCARD_SORT_ALPHA。"
+  #elif ENABLED(RUNOUT_TUNE_ITEM) && DISABLED(HAS_FILAMENT_SENSOR)
+    #error "RUNOUT_TUNE_ITEM需要HAS_FILAMENT_SENSOR。"
+  #elif ENABLED(PLR_TUNE_ITEM) && DISABLED(POWER_LOSS_RECOVERY)
+    #error "PLR_TUNE_ITEM需要POWER_LOSS_RECOVERY。"
+  #elif ENABLED(JD_TUNE_ITEM) && DISABLED(HAS_JUNCTION_DEVIATION)
+    #error "JD_TUNE_ITEM需要HAS_JUNCTION_DEVIATION。"
+  #elif ENABLED(ADVK_TUNE_ITEM) && DISABLED(LIN_ADVANCE)
+    #error "ADVK_TUNE_ITEM需要LIN_ADVANCE。"
+  #endif
+#endif
+
+#if LCD_BACKLIGHT_TIMEOUT_MINS
+  #if !HAS_ENCODER_ACTION
+    #error "LCD_BACKLIGHT_TIMEOUT_MINS需要带有编码器或键盘的LCD。"
+  #elif ENABLED(NEOPIXEL_BKGD_INDEX_FIRST)
+    #if PIN_EXISTS(LCD_BACKLIGHT)
+      #error "LCD_BACKLIGHT_PIN和NEOPIXEL_BKGD_INDEX_FIRST不能同时使用。"
+    #elif ENABLED(NEOPIXEL_BKGD_ALWAYS_ON)
+      #error "LCD_BACKLIGHT_TIMEOUT与NEOPIXEL_BKGD_ALWAYS_ON不兼容。"
+    #endif
+  #elif !PIN_EXISTS(LCD_BACKLIGHT)
+    #error "LCD_BACKLIGHT_TIMEOUT_MINS需要LCD_BACKLIGHT_PIN或NEOPIXEL_BKGD_INDEX_FIRST。"
+  #endif
+#endif
+
+// 启动音要求
+#ifdef STARTUP_TUNE
+  #if ANY(ANYCUBIC_LCD_CHIRON, ANYCUBIC_LCD_VYPER)
+    #error "应禁用STARTUP_TUNE与ANYCUBIC_LCD_CHIRON或ANYCUBIC_LCD_VYPER。"
+  #elif !(ALL(HAS_BEEPER, SPEAKER) || USE_MARLINUI_BUZZER)
+    #error "STARTUP_TUNE需要带有SPEAKER的BEEPER_PIN或USE_MARLINUI_BUZZER。"
+    #undef STARTUP_TUNE
+  #endif
+#endif
+
+/**
+ * 显示器休眠不受这些常见显示器的支持
+ */
+#if HAS_DISPLAY_SLEEP
+  #if ANY(IS_U8GLIB_LM6059_AF, IS_U8GLIB_ST7565_64128, REPRAPWORLD_GRAPHICAL_LCD, FYSETC_MINI_12864, CR10_STOCKDISPLAY, MINIPANEL)
+    #error "DISPLAY_SLEEP_MINUTES在您的显示器上不受支持。"
+  #elif !WITHIN(DISPLAY_SLEEP_MINUTES, 0, 255)
+    #error "DISPLAY_SLEEP_MINUTES必须介于0和255之间。"
+  #endif
+#endif
+
+/**
+ * 一些板禁止使用-1本机USB
+ */
+#if ENABLED(BOARD_NO_NATIVE_USB)
+  #undef BOARD_NO_NATIVE_USB
+  #if SERIAL_PORT == -1
+    #error "SERIAL_PORT设置为-1，但MOTHERBOARD不支持本机USB。请为您的板设置SERIAL_PORT的有效值。"
+  #elif SERIAL_PORT_2 == -1
+    #error "SERIAL_PORT_2设置为-1，但MOTHERBOARD不支持本机USB。请为您的板设置SERIAL_PORT_2的有效值。"
+  #elif MMU2_SERIAL_PORT == -1
+    #error "MMU2_SERIAL_PORT设置为-1，但MOTHERBOARD不支持本机USB。请为您的板设置MMU2_SERIAL_PORT的有效值。"
+  #elif LCD_SERIAL_PORT == -1
+    #error "LCD_SERIAL_PORT设置为-1，但MOTHERBOARD不支持本机USB。请为您的板设置LCD_SERIAL_PORT的有效值。"
+  #endif
+#endif
+
+/**
+ * MMU2需要一个专用的串口
+ */
+#ifdef MMU2_SERIAL_PORT
+  #if MMU2_SERIAL_PORT == SERIAL_PORT
+    #error "MMU2_SERIAL_PORT不能与SERIAL_PORT相同。"
+  #elif defined(SERIAL_PORT_2) && MMU2_SERIAL_PORT == SERIAL_PORT_2
+    #error "MMU2_SERIAL_PORT不能与SERIAL_PORT_2相同。"
+  #elif defined(LCD_SERIAL_PORT) && MMU2_SERIAL_PORT == LCD_SERIAL_PORT
+    #error "MMU2_SERIAL_PORT不能与LCD_SERIAL_PORT相同。"
+  #endif
+#endif
+
+/**
+ * 串行显示器需要专用的串口
+ */
+#ifdef LCD_SERIAL_PORT
+  #if LCD_SERIAL_PORT == SERIAL_PORT
+    #error "LCD_SERIAL_PORT不能与SERIAL_PORT相同。"
+  #elif defined(SERIAL_PORT_2) && LCD_SERIAL_PORT == SERIAL_PORT_2
+    #error "LCD_SERIAL_PORT不能与SERIAL_PORT_2相同。"
+  #endif
+#else
+  #if HAS_DGUS_LCD
+    #error "DGUS LCD需要定义LCD_SERIAL_PORT。"
+  #elif ANY(ANYCUBIC_LCD_I3MEGA, ANYCUBIC_LCD_CHIRON, ANYCUBIC_LCD_VYPER)
+    #error "ANYCUBIC_LCD_*需要定义LCD_SERIAL_PORT。"
+  #elif ENABLED(MALYAN_LCD)
+    #error "MALYAN_LCD需要定义LCD_SERIAL_PORT。"
+  #elif ENABLED(NEXTION_LCD)
+    #error "NEXTION_LCD需要定义LCD_SERIAL_PORT。"
+  #endif
+#endif
+
+/**
+ * 检查已启用的TMC SPI驱动器的现有CS引脚。
+ */
+#define INVALID_TMC_SPI(ST) (AXIS_HAS_SPI(ST) && !PIN_EXISTS(ST##_CS))
+#if INVALID_TMC_SPI(X)
+  #error "在X上使用SPI驱动的TMC驱动器需要X_CS_PIN。"
+#elif INVALID_TMC_SPI(X2)
+  #error "在X2上使用SPI驱动的TMC驱动器需要X2_CS_PIN。"
+#elif INVALID_TMC_SPI(Y)
+  #error "在Y上使用SPI驱动的TMC驱动器需要Y_CS_PIN。"
+#elif INVALID_TMC_SPI(Y2)
+  #error "在Y2上使用SPI驱动的TMC驱动器需要Y2_CS_PIN。"
+#elif INVALID_TMC_SPI(Z)
+  #error "在Z上使用SPI驱动的TMC驱动器需要Z_CS_PIN。"
+#elif INVALID_TMC_SPI(Z2)
+  #error "在Z2上使用SPI驱动的TMC驱动器需要Z2_CS_PIN。"
+#elif INVALID_TMC_SPI(Z3)
+  #error "在Z3上使用SPI驱动的TMC驱动器需要Z3_CS_PIN。"
+#elif INVALID_TMC_SPI(Z4)
+  #error "在Z4上使用SPI驱动的TMC驱动器需要Z4_CS_PIN。"
+#elif INVALID_TMC_SPI(E0)
+  #error "在E0上使用SPI驱动的TMC驱动器需要E0_CS_PIN。"
+#elif INVALID_TMC_SPI(E1)
+  #error "在E1上使用SPI驱动的TMC驱动器需要E1_CS_PIN。"
+#elif INVALID_TMC_SPI(E2)
+  #error "在E2上使用SPI驱动的TMC驱动器需要E2_CS_PIN。"
+#elif INVALID_TMC_SPI(E3)
+  #error "在E3上使用SPI驱动的TMC驱动器需要E3_CS_PIN。"
+#elif INVALID_TMC_SPI(E4)
+  #error "在E4上使用SPI驱动的TMC驱动器需要E4_CS_PIN。"
+#elif INVALID_TMC_SPI(E5)
+  #error "在E5上使用SPI驱动的TMC驱动器需要E5_CS_PIN。"
+#elif INVALID_TMC_SPI(E6)
+  #error "在E6上使用SPI驱动的TMC驱动器需要E6_CS_PIN。"
+#elif INVALID_TMC_SPI(E7)
+  #error "在E7上使用SPI驱动的TMC驱动器需要E7_CS_PIN。"
+#elif INVALID_TMC_SPI(I)
+  #error "在I上使用SPI驱动的TMC需要I_CS_PIN。"
+#elif INVALID_TMC_SPI(J)
+  #error "在J上使用SPI驱动的TMC需要J_CS_PIN。"
+#elif INVALID_TMC_SPI(K)
+  #error "在K上使用SPI驱动的TMC需要K_CS_PIN。"
+#elif INVALID_TMC_SPI(U)
+  #error "在U上使用SPI驱动的TMC需要U_CS_PIN。"
+#elif INVALID_TMC_SPI(V)
+  #error "在V上使用SPI驱动的TMC需要V_CS_PIN。"
+#elif INVALID_TMC_SPI(W)
+  #error "在W上使用SPI驱动的TMC需要W_CS_PIN。"
+#endif
+#undef INVALID_TMC_SPI
+
+/**
+ * 检查已启用的TMC UART驱动器的现有RX/TX引脚。
+ */
+#define INVALID_TMC_UART(ST) (AXIS_HAS_UART(ST) && !(defined(ST##_HARDWARE_SERIAL) || (PINS_EXIST(ST##_SERIAL_RX, ST##_SERIAL_TX))))
+#if INVALID_TMC_UART(X)
+  #error "在X上使用TMC2208或TMC2209需要X_HARDWARE_SERIAL或X_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(X2)
+  #error "在X2上使用TMC2208或TMC2209需要X2_HARDWARE_SERIAL或X2_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(Y)
+  #error "在Y上使用TMC2208或TMC2209需要Y_HARDWARE_SERIAL或Y_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(Y2)
+  #error "在Y2上使用TMC2208或TMC2209需要Y2_HARDWARE_SERIAL或Y2_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(Z)
+  #error "在Z上使用TMC2208或TMC2209需要Z_HARDWARE_SERIAL或Z_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(Z2)
+  #error "在Z2上使用TMC2208或TMC2209需要Z2_HARDWARE_SERIAL或Z2_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(Z3)
+  #error "在Z3上使用TMC2208或TMC2209需要Z3_HARDWARE_SERIAL或Z3_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(Z4)
+  #error "在Z4上使用TMC2208或TMC2209需要Z4_HARDWARE_SERIAL或Z4_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E0)
+  #error "在E0上使用TMC2208或TMC2209需要E0_HARDWARE_SERIAL或E0_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E1)
+  #error "在E1上使用TMC2208或TMC2209需要E1_HARDWARE_SERIAL或E1_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E2)
+  #error "在E2上使用TMC2208或TMC2209需要E2_HARDWARE_SERIAL或E2_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E3)
+  #error "在E3上使用TMC2208或TMC2209需要E3_HARDWARE_SERIAL或E3_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E4)
+  #error "在E4上使用TMC2208或TMC2209需要E4_HARDWARE_SERIAL或E4_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E5)
+  #error "在E5上使用TMC2208或TMC2209需要E5_HARDWARE_SERIAL或E5_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E6)
+  #error "在E6上使用TMC2208或TMC2209需要E6_HARDWARE_SERIAL或E6_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(E7)
+  #error "在E7上使用TMC2208或TMC2209需要E7_HARDWARE_SERIAL或E7_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(I)
+  #error "在I上使用TMC2208或TMC2209需要I_HARDWARE_SERIAL或I_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(J)
+  #error "在J上使用TMC2208或TMC2209需要J_HARDWARE_SERIAL或J_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(K)
+  #error "在K上使用TMC2208或TMC2209需要K_HARDWARE_SERIAL或K_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(U)
+  #error "在U上使用TMC2208或TMC2209需要U_HARDWARE_SERIAL或U_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(V)
+  #error "在V上使用TMC2208或TMC2209需要V_HARDWARE_SERIAL或V_SERIAL_(RX|TX)_PIN。"
+#elif INVALID_TMC_UART(W)
+  #error "在W上使用TMC2208或TMC2209需要W_HARDWARE_SERIAL或W_SERIAL_(RX|TX)_PIN。"
+  
+#endif
+#undef INVALID_TMC_UART
+
+/**
+ * TMC2209从地址值
+ */
+#define INVALID_TMC_ADDRESS(ST) static_assert(0 <= ST##_SLAVE_ADDRESS && ST##_SLAVE_ADDRESS <= 3, "TMC2209从地址必须为0、1、2或3")
+#if AXIS_DRIVER_TYPE_X(TMC2209)
+  INVALID_TMC_ADDRESS(X);
+#elif AXIS_DRIVER_TYPE_X2(TMC2209)
+  INVALID_TMC_ADDRESS(X2);
+#elif AXIS_DRIVER_TYPE_Y(TMC2209)
+  INVALID_TMC_ADDRESS(Y);
+#elif AXIS_DRIVER_TYPE_Y2(TMC2209)
+  INVALID_TMC_ADDRESS(Y2);
+#elif AXIS_DRIVER_TYPE_Z(TMC2209)
+  INVALID_TMC_ADDRESS(Z);
+#elif AXIS_DRIVER_TYPE_Z2(TMC2209)
+  INVALID_TMC_ADDRESS(Z2);
+#elif AXIS_DRIVER_TYPE_Z3(TMC2209)
+  INVALID_TMC_ADDRESS(Z3);
+#elif AXIS_DRIVER_TYPE_Z4(TMC2209)
+  INVALID_TMC_ADDRESS(Z4);
+#elif AXIS_DRIVER_TYPE_I(TMC2209)
+  INVALID_TMC_ADDRESS(I);
+#elif AXIS_DRIVER_TYPE_J(TMC2209)
+  INVALID_TMC_ADDRESS(J);
+#elif AXIS_DRIVER_TYPE_K(TMC2209)
+  INVALID_TMC_ADDRESS(K);
+#elif AXIS_DRIVER_TYPE_U(TMC2209)
+  INVALID_TMC_ADDRESS(U);
+#elif AXIS_DRIVER_TYPE_V(TMC2209)
+  INVALID_TMC_ADDRESS(V);
+#elif AXIS_DRIVER_TYPE_W(TMC2209)
+  INVALID_TMC_ADDRESS(W);
+#elif AXIS_DRIVER_TYPE_E0(TMC2209)
+  INVALID_TMC_ADDRESS(E0);
+#elif AXIS_DRIVER_TYPE_E1(TMC2209)
+  INVALID_TMC_ADDRESS(E1);
+#elif AXIS_DRIVER_TYPE_E2(TMC2209)
+  INVALID_TMC_ADDRESS(E2);
+#elif AXIS_DRIVER_TYPE_E3(TMC2209)
+  INVALID_TMC_ADDRESS(E3);
+#elif AXIS_DRIVER_TYPE_E4(TMC2209)
+  INVALID_TMC_ADDRESS(E4);
+#elif AXIS_DRIVER_TYPE_E5(TMC2209)
+  INVALID_TMC_ADDRESS(E5);
+#elif AXIS_DRIVER_TYPE_E6(TMC2209)
+  INVALID_TMC_ADDRESS(E6);
+#elif AXIS_DRIVER_TYPE_E7(TMC2209)
+  INVALID_TMC_ADDRESS(E7);
+#endif
+#undef INVALID_TMC_ADDRESS
+
+#define _TMC_MICROSTEP_IS_VALID(MS) (MS == 0 || MS == 2 || MS == 4 || MS == 8 || MS == 16 || MS == 32 || MS == 64 || MS == 128 || MS == 256)
+#define TMC_MICROSTEP_IS_VALID(M) (!AXIS_IS_TMC(M) || _TMC_MICROSTEP_IS_VALID(M##_MICROSTEPS))
+#define INVALID_TMC_MS(ST) static_assert(0, "无效的" STRINGIFY(ST) "_MICROSTEPS。有效值为0、2、4、8、16、32、64、128和256。")
+
+#if !TMC_MICROSTEP_IS_VALID(X)
+  INVALID_TMC_MS(X);
+#elif !TMC_MICROSTEP_IS_VALID(Y)
+  INVALID_TMC_MS(Y)
+#elif !TMC_MICROSTEP_IS_VALID(Z)
+  INVALID_TMC_MS(Z)
+#elif !TMC_MICROSTEP_IS_VALID(X2)
+  INVALID_TMC_MS(X2);
+#elif !TMC_MICROSTEP_IS_VALID(Y2)
+  INVALID_TMC_MS(Y2)
+#elif !TMC_MICROSTEP_IS_VALID(Z2)
+  INVALID_TMC_MS(Z2)
+#elif !TMC_MICROSTEP_IS_VALID(Z3)
+  INVALID_TMC_MS(Z3)
+#elif !TMC_MICROSTEP_IS_VALID(Z4)
+  INVALID_TMC_MS(Z4)
+#elif !TMC_MICROSTEP_IS_VALID(E0)
+  INVALID_TMC_MS(E0)
+#elif !TMC_MICROSTEP_IS_VALID(E1)
+  INVALID_TMC_MS(E1)
+#elif !TMC_MICROSTEP_IS_VALID(E2)
+  INVALID_TMC_MS(E2)
+#elif !TMC_MICROSTEP_IS_VALID(E3)
+  INVALID_TMC_MS(E3)
+#elif !TMC_MICROSTEP_IS_VALID(E4)
+  INVALID_TMC_MS(E4)
+#elif !TMC_MICROSTEP_IS_VALID(E5)
+  INVALID_TMC_MS(E5)
+#elif !TMC_MICROSTEP_IS_VALID(E6)
+  INVALID_TMC_MS(E6)
+#elif !TMC_MICROSTEP_IS_VALID(E7)
+  INVALID_TMC_MS(E7)
+#elif !TMC_MICROSTEP_IS_VALID(I)
+  INVALID_TMC_MS(I)
+#elif !TMC_MICROSTEP_IS_VALID(J)
+  INVALID_TMC_MS(J)
+#elif !TMC_MICROSTEP_IS_VALID(K)
+  INVALID_TMC_MS(K)
+#elif !TMC_MICROSTEP_IS_VALID(U)
+  INVALID_TMC_MS(U)
+#elif !TMC_MICROSTEP_IS_VALID(V)
+  INVALID_TMC_MS(V)
+#elif !TMC_MICROSTEP_IS_VALID(W)
+  INVALID_TMC_MS(W)
+#endif
+#undef INVALID_TMC_MS
+#undef TMC_MICROSTEP_IS_VALID
+#undef _TMC_MICROSTEP_IS_VALID
+
+#if ENABLED(DELTA) && (ENABLED(STEALTHCHOP_XY) != ENABLED(STEALTHCHOP_Z))
+  #error "在DELTA上，STEALTHCHOP_XY和STEALTHCHOP_Z必须相同。"
+#endif
+
+#if ENABLED(SENSORLESS_HOMING)
+  // 在DELTA上，要求STEALTHCHOP来实现SENSORLESS_HOMING，因为需要在所有三个塔向+Z方向的初始移动和每个塔的单独归位之间进行spreadCycle到stealthChop的切换，以重置stallGuard指示。一旦找到了清除stallGuard激活状态的方法，就可以取消此限制。
+
+  #if NONE(SPI_ENDSTOPS, ONBOARD_ENDSTOPPULLUPS, ENDSTOPPULLUPS)
+    #if   X_SENSORLESS && X_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_XMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_XMIN（或ENDSTOPPULLUPS）来进行X MIN归位。"
+    #elif X_SENSORLESS && X_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_XMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_XMAX（或ENDSTOPPULLUPS）来进行X MAX归位。"
+    #elif Y_SENSORLESS && Y_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_YMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_YMIN（或ENDSTOPPULLUPS）来进行Y MIN归位。"
+    #elif Y_SENSORLESS && Y_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_YMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_YMAX（或ENDSTOPPULLUPS）来进行Y MAX归位。"
+    #elif Z_SENSORLESS && Z_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_ZMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_ZMIN（或ENDSTOPPULLUPS）来进行Z MIN归位。"
+    #elif Z_SENSORLESS && Z_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_ZMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_ZMAX（或ENDSTOPPULLUPS）来进行Z MAX归位。"
+    #elif I_SENSORLESS && I_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_IMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_IMIN（或ENDSTOPPULLUPS）来进行I MIN归位。"
+    #elif I_SENSORLESS && I_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_IMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_IMAX（或ENDSTOPPULLUPS）来进行I MAX归位。"
+    #elif J_SENSORLESS && J_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_JMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_JMIN（或ENDSTOPPULLUPS）来进行J MIN归位。"
+    #elif J_SENSORLESS && J_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_JMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_JMAX（或ENDSTOPPULLUPS）来进行J MAX归位。"
+    #elif K_SENSORLESS && K_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_KMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_KMIN（或ENDSTOPPULLUPS）来进行K MIN归位。"
+    #elif K_SENSORLESS && K_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_KMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_KMAX（或ENDSTOPPULLUPS）来进行K MAX归位。"
+    #elif U_SENSORLESS && U_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_UMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_UMIN（或ENDSTOPPULLUPS）来进行U MIN归位。"
+    #elif U_SENSORLESS && U_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_UMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_UMAX（或ENDSTOPPULLUPS）来进行U MAX归位。"
+    #elif V_SENSORLESS && V_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_VMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_VMIN（或ENDSTOPPULLUPS）来进行V MIN归位。"
+    #elif V_SENSORLESS && V_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_VMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_VMAX（或ENDSTOPPULLUPS）来进行V MAX归位。"
+    #elif W_SENSORLESS && W_HOME_TO_MIN && DISABLED(ENDSTOPPULLUP_WMIN)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_WMIN（或ENDSTOPPULLUPS）来进行W MIN归位。"
+    #elif W_SENSORLESS && W_HOME_TO_MAX && DISABLED(ENDSTOPPULLUP_WMAX)
+      #error "SENSORLESS_HOMING需要ENDSTOPPULLUP_WMAX（或ENDSTOPPULLUPS）来进行W MAX归位。"
+    #endif
+  #endif
+
+  #if ENABLED(SPI_ENDSTOPS)
+    #if !ANY_AXIS_HAS(SPI)
+      #error "SPI_ENDSTOPS需要支持SPI的步进驱动器。"
+    #endif
+  #else // !SPI_ENDSTOPS
+    // Stall detection DIAG = HIGH : TMC2209
+    // Stall detection DIAG = LOW  : TMC2130/TMC2160/TMC2660/TMC5130/TMC5160
+    #if X_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(X,TMC2209)
+      #if X_HOME_TO_MIN && X_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING需要X_MIN_ENDSTOP_HIT_STATE为HIGH来进行X MIN归位（使用TMC2209）。"
+        #else
+          #error "SENSORLESS_HOMING需要X_MIN_ENDSTOP_HIT_STATE为LOW来进行X MIN归位。"
+        #endif
+      #elif X_HOME_TO_MAX && X_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING需要X_MAX_ENDSTOP_HIT_STATE为HIGH来进行X MAX归位（使用TMC2209）。"
+        #else
+          #error "SENSORLESS_HOMING需要X_MAX_ENDSTOP_HIT_STATE为LOW来进行X MAX归位。"
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+    #if Y_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(Y,TMC2209)
+      #if Y_HOME_TO_MIN && Y_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING需要Y_MIN_ENDSTOP_HIT_STATE为HIGH来进行Y MIN归位（使用TMC2209）。"
+        #else
+          #error "SENSORLESS_HOMING需要Y_MIN_ENDSTOP_HIT_STATE为LOW来进行Y MIN归位。"
+        #endif
+      #elif Y_HOME_TO_MAX && Y_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING需要Y_MAX_ENDSTOP_HIT_STATE为HIGH来进行Y MAX归位（使用TMC2209）。"
+        #else
+          #error "SENSORLESS_HOMING需要Y_MAX_ENDSTOP_HIT_STATE为LOW来进行Y MAX归位。"
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+#if Z_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(Z,TMC2209)
+      #if Z_HOME_TO_MIN && Z_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires Z_MIN_ENDSTOP_HIT_STATE HIGH for Z MIN homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires Z_MIN_ENDSTOP_HIT_STATE LOW for Z MIN homing."
+        #endif
+      #elif Z_HOME_TO_MAX && Z_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires Z_MAX_ENDSTOP_HIT_STATE HIGH for Z MAX homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires Z_MAX_ENDSTOP_HIT_STATE LOW for Z MAX homing."
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+    #if I_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(I,TMC2209)
+      #if I_HOME_TO_MIN && I_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires I_MIN_ENDSTOP_HIT_STATE HIGH for I MIN homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires I_MIN_ENDSTOP_HIT_STATE LOW for I MIN homing."
+        #endif
+      #elif I_HOME_TO_MAX && I_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires I_MAX_ENDSTOP_HIT_STATE HIGH for I MAX homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires I_MAX_ENDSTOP_HIT_STATE LOW for I MAX homing."
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+    #if J_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(J,TMC2209)
+      #if J_HOME_TO_MIN && J_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires J_MIN_ENDSTOP_HIT_STATE HIGH for J MIN homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires J_MIN_ENDSTOP_HIT_STATE LOW for J MIN homing."
+        #endif
+      #elif J_HOME_TO_MAX && J_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires J_MAX_ENDSTOP_HIT_STATE HIGH for J MAX homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires J_MAX_ENDSTOP_HIT_STATE LOW for J MAX homing."
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+    #if K_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(K,TMC2209)
+      #if K_HOME_TO_MIN && K_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires K_MIN_ENDSTOP_HIT_STATE HIGH for K MIN homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires K_MIN_ENDSTOP_HIT_STATE LOW for K MIN homing."
+        #endif
+      #elif K_HOME_TO_MAX && K_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires K_MAX_ENDSTOP_HIT_STATE HIGH for K MAX homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires K_MAX_ENDSTOP_HIT_STATE LOW for K MAX homing."
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+    #if U_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(U,TMC2209)
+      #if U_HOME_TO_MIN && U_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires U_MIN_ENDSTOP_HIT_STATE HIGH for U MIN homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires U_MIN_ENDSTOP_HIT_STATE LOW for U MIN homing."
+        #endif
+      #elif U_HOME_TO_MAX && U_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires U_MAX_ENDSTOP_HIT_STATE HIGH for U MAX homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires U_MAX_ENDSTOP_HIT_STATE LOW for U MAX homing."
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+    #if V_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(V,TMC2209)
+      #if V_HOME_TO_MIN && V_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires V_MIN_ENDSTOP_HIT_STATE HIGH for V MIN homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires V_MIN_ENDSTOP_HIT_STATE LOW for V MIN homing."
+        #endif
+      #elif V_HOME_TO_MAX && V_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires V_MAX_ENDSTOP_HIT_STATE HIGH for V MAX homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires V_MAX_ENDSTOP_HIT_STATE LOW for V MAX homing."
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+    #if W_SENSORLESS
+      #define _HIT_STATE AXIS_DRIVER_TYPE(W,TMC2209)
+      #if W_HOME_TO_MIN && W_MIN_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires W_MIN_ENDSTOP_HIT_STATE HIGH for W MIN homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires W_MIN_ENDSTOP_HIT_STATE LOW for W MIN homing."
+        #endif
+      #elif W_HOME_TO_MAX && W_MAX_ENDSTOP_HIT_STATE != _HIT_STATE
+        #if _HIT_STATE
+          #error "SENSORLESS_HOMING requires W_MAX_ENDSTOP_HIT_STATE HIGH for W MAX homing with TMC2209."
+        #else
+          #error "SENSORLESS_HOMING requires W_MAX_ENDSTOP_HIT_STATE LOW for W MAX homing."
+        #endif
+      #endif
+      #undef _HIT_STATE
+    #endif
+
+  #endif // !SPI_ENDSTOPS
+
+#if ENABLED(DELTA) && !ALL(STEALTHCHOP_XY, STEALTHCHOP_Z)
+    #error "DELTA上的SENSORLESS_HOMING当前需要STEALTHCHOP_XY和STEALTHCHOP_Z。"
+  #elif ENDSTOP_NOISE_THRESHOLD
+    #error "SENSORLESS_HOMING与ENDSTOP_NOISE_THRESHOLD不兼容。"
+  #elif !(X_SENSORLESS || Y_SENSORLESS || Z_SENSORLESS || I_SENSORLESS || J_SENSORLESS || K_SENSORLESS || U_SENSORLESS || V_SENSORLESS || W_SENSORLESS)
+    #error "SENSORLESS_HOMING需要在X、Y、Z、I、J、K、U、V或W轴上使用具有StallGuard的TMC步进驱动器。"
+  #endif
+
+#endif // SENSORLESS_HOMING
+
+// 传感器无探测要求
+#if ENABLED(SENSORLESS_PROBING)
+  #if ENABLED(DELTA) && !(X_SENSORLESS && Y_SENSORLESS && Z_SENSORLESS)
+    #error "DELTA上的SENSORLESS_PROBING需要在X、Y和Z轴上使用具有StallGuard的TMC步进驱动器。"
+  #elif ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN)
+    #error "SENSORLESS_PROBING不能与Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN一起使用。"
+  #elif ENABLED(USE_PROBE_FOR_Z_HOMING)
+    #error "SENSORLESS_PROBING不能与USE_PROBE_FOR_Z_HOMING一起使用。"
+  #elif !Z_SENSORLESS
+    #error "SENSORLESS_PROBING需要在Z轴上使用具有StallGuard的TMC步进驱动器。"
+  #endif
+#endif
+
+// 对于H-bot，两个组合步进电机都需要传感器无归位
+#if CORE_IS_XY && X_SENSORLESS != Y_SENSORLESS
+  #error "在CoreXY中，如果其中一个步进电机需要，X和Y都需要使用传感器无归位。"
+#elif CORE_IS_XZ && X_SENSORLESS != Z_SENSORLESS && !HOMING_Z_WITH_PROBE
+  #error "在CoreXZ中，如果其中一个步进电机需要，X和Z都需要使用传感器无归位。"
+#elif CORE_IS_YZ && Y_SENSORLESS != Z_SENSORLESS && !HOMING_Z_WITH_PROBE
+  #error "在CoreYZ中，如果其中一个步进电机需要，Y和Z都需要使用传感器无归位。"
+#elif ANY(MARKFORGED_XY, MARKFORGED_YX) && X_SENSORLESS != Y_SENSORLESS
+  #error "在MARKFORGED中，如果其中一个步进电机需要，X和Y都需要使用传感器无归位。"
+#endif
+
+// 其他TMC功能要求
+#if ENABLED(HYBRID_THRESHOLD) && !STEALTHCHOP_ENABLED
+  #error "启用STEALTHCHOP_(XY|Z|E)以使用HYBRID_THRESHOLD。"
+#elif ENABLED(SENSORLESS_HOMING) && !HAS_STALLGUARD
+  #error "SENSORLESS_HOMING需要TMC2130、TMC2160、TMC2209、TMC2660或TMC5160步进驱动器。"
+#elif ENABLED(SENSORLESS_PROBING) && !HAS_STALLGUARD
+  #error "SENSORLESS_PROBING需要TMC2130、TMC2160、TMC2209、TMC2660或TMC5160步进驱动器。"
+#elif STEALTHCHOP_ENABLED && !HAS_STEALTHCHOP
+  #error "STEALTHCHOP需要TMC2130、TMC2160、TMC2208、TMC2209或TMC5160步进驱动器。"
+#endif
+
+/**
+ * TMC SPI串联
+ */
+#define IN_CHAIN(A) A##_CHAIN_POS > 0
+#if  IN_CHAIN(X) || IN_CHAIN(Y) || IN_CHAIN(Z) || IN_CHAIN(I) || IN_CHAIN(J) || IN_CHAIN(K) || IN_CHAIN(U) || IN_CHAIN(V) || IN_CHAIN(W) \
+  || IN_CHAIN(X2) || IN_CHAIN(Y2) || IN_CHAIN(Z2) || IN_CHAIN(Z3) || IN_CHAIN(Z4) \
+  || IN_CHAIN(E0) || IN_CHAIN(E1) || IN_CHAIN(E2) || IN_CHAIN(E3) || IN_CHAIN(E4) || IN_CHAIN(E5) || IN_CHAIN(E6) || IN_CHAIN(E7)
+  #define BAD_CHAIN(A) (IN_CHAIN(A) && !PIN_EXISTS(A##_CS))
+  #if  BAD_CHAIN(X) || BAD_CHAIN(Y) || BAD_CHAIN(Z) || BAD_CHAIN(I) || BAD_CHAIN(J) || BAD_CHAIN(K) || BAD_CHAIN(U) || BAD_CHAIN(V) || BAD_CHAIN(W) \
+    || BAD_CHAIN(X2) || BAD_CHAIN(Y2) || BAD_CHAIN(Z2) || BAD_CHAIN(Z3) || BAD_CHAIN(Z4) \
+    || BAD_CHAIN(E0) || BAD_CHAIN(E1) || BAD_CHAIN(E2) || BAD_CHAIN(E3) || BAD_CHAIN(E4) || BAD_CHAIN(E5) || BAD_CHAIN(E6) || BAD_CHAIN(E7)
+    #error "所有链接的TMC驱动器需要一个CS引脚。"
+  #else
+    #if IN_CHAIN(X)
+      #define CS_COMPARE X_CS_PIN
+    #elif IN_CHAIN(Y)
+      #define CS_COMPARE Y_CS_PIN
+    #elif IN_CHAIN(Z)
+      #define CS_COMPARE Z_CS_PIN
+    #elif IN_CHAIN(X2)
+      #define CS_COMPARE X2_CS_PIN
+    #elif IN_CHAIN(Y2)
+      #define CS_COMPARE Y2_CS_PIN
+    #elif IN_CHAIN(Z2)
+      #define CS_COMPARE Z2_CS_PIN
+    #elif IN_CHAIN(Z3)
+      #define CS_COMPARE Z3_CS_PIN
+    #elif IN_CHAIN(I)
+      #define CS_COMPARE I_CS_PIN
+    #elif IN_CHAIN(J)
+      #define CS_COMPARE J_CS_PIN
+    #elif IN_CHAIN(K)
+      #define CS_COMPARE K_CS_PIN
+    #elif IN_CHAIN(U)
+      #define CS_COMPARE U_CS_PIN
+    #elif IN_CHAIN(V)
+      #define CS_COMPARE V_CS_PIN
+    #elif IN_CHAIN(W)
+      #define CS_COMPARE W_CS_PIN
+    #elif IN_CHAIN(E0)
+      #define CS_COMPARE E0_CS_PIN
+    #elif IN_CHAIN(E1)
+      #define CS_COMPARE E1_CS_PIN
+    #elif IN_CHAIN(E2)
+      #define CS_COMPARE E2_CS_PIN
+    #elif IN_CHAIN(E3)
+      #define CS_COMPARE E3_CS_PIN
+    #elif IN_CHAIN(E4)
+      #define CS_COMPARE E4_CS_PIN
+    #elif IN_CHAIN(E5)
+      #define CS_COMPARE E5_CS_PIN
+    #elif IN_CHAIN(E6)
+      #define CS_COMPARE E6_CS_PIN
+    #elif IN_CHAIN(E7)
+      #define CS_COMPARE E7_CS_PIN
+    #endif
+    #define BAD_CS_PIN(A) (IN_CHAIN(A) && A##_CS_PIN != CS_COMPARE)
+    #if  BAD_CS_PIN(X) || BAD_CS_PIN(Y) || BAD_CS_PIN(Z) || BAD_CS_PIN(I) || BAD_CS_PIN(J) || BAD_CS_PIN(K) || BAD_CS_PIN(U) || BAD_CS_PIN(V) || BAD_CS_PIN(W) \
+      || BAD_CS_PIN(X2) || BAD_CS_PIN(Y2) || BAD_CS_PIN(Z2) || BAD_CS_PIN(Z3) || BAD_CS_PIN(Z4) \
+      || BAD_CS_PIN(E0) || BAD_CS_PIN(E1) || BAD_CS_PIN(E2) || BAD_CS_PIN(E3) || BAD_CS_PIN(E4) || BAD_CS_PIN(E5) || BAD_CS_PIN(E6) || BAD_CS_PIN(E7)
+      #error "所有链接的TMC驱动器必须使用相同的CS引脚。"
+    #endif
+    #undef BAD_CS_PIN
+    #undef CS_COMPARE
+  #endif
+  #undef BAD_CHAIN
+#endif
+#undef IN_CHAIN
+
+/**
+ * 数字电位器要求
+ */
+#if HAS_MOTOR_CURRENT_I2C
+  #if ALL(DIGIPOT_MCP4018, DIGIPOT_MCP4451)
+    #error "只能启用DIGIPOT_MCP4018或DIGIPOT_MCP4451中的一个。"
+  #elif !MB(MKS_SBASE, AZTEEG_X5_GT, AZTEEG_X5_MINI, AZTEEG_X5_MINI_WIFI) \
+    && (!defined(DIGIPOTS_I2C_SDA_X) || !defined(DIGIPOTS_I2C_SDA_Y) || !defined(DIGIPOTS_I2C_SDA_Z) || !defined(DIGIPOTS_I2C_SDA_E0) || !defined(DIGIPOTS_I2C_SDA_E1))
+      #error "DIGIPOT_MCP4018/4451需要定义DIGIPOTS_I2C_SDA_*引脚。"
+  #endif
+#endif
+
+/**
+ * 检查每个轴的初始化器是否存在错误
+ */
+
+#define __PLUS_TEST(I,A) && (sanity_arr_##A[_MIN(I,signed(COUNT(sanity_arr_##A)-1))] > 0)
+#define _PLUS_TEST(A) (1 REPEAT2(14,__PLUS_TEST,A))
+#if HAS_MULTI_EXTRUDER
+  #define _EXTRA_NOTE " (你忘记启用DISTINCT_E_FACTORS了吗？)"
+#else
+  #define _EXTRA_NOTE " (应该是 " STRINGIFY(NUM_AXES) "+" STRINGIFY(E_STEPPERS) ")"
+#endif
+
+constexpr float sanity_arr_1[] = DEFAULT_AXIS_STEPS_PER_UNIT;
+static_assert(COUNT(sanity_arr_1) >= LOGICAL_AXES,  "DEFAULT_AXIS_STEPS_PER_UNIT需要 " _LOGICAL_AXES_STR "个元素。");
+static_assert(COUNT(sanity_arr_1) <= DISTINCT_AXES, "DEFAULT_AXIS_STEPS_PER_UNIT的元素太多。" _EXTRA_NOTE);
+static_assert(_PLUS_TEST(1), "DEFAULT_AXIS_STEPS_PER_UNIT的值必须为正数。");
+
+constexpr float sanity_arr_2[] = DEFAULT_MAX_FEEDRATE;
+static_assert(COUNT(sanity_arr_2) >= LOGICAL_AXES,  "DEFAULT_MAX_FEEDRATE需要 " _LOGICAL_AXES_STR "个元素。");
+static_assert(COUNT(sanity_arr_2) <= DISTINCT_AXES, "DEFAULT_MAX_FEEDRATE的元素太多。" _EXTRA_NOTE);
+static_assert(_PLUS_TEST(2), "DEFAULT_MAX_FEEDRATE的值必须为正数。");
+
+constexpr float sanity_arr_3[] = DEFAULT_MAX_ACCELERATION;
+static_assert(COUNT(sanity_arr_3) >= LOGICAL_AXES,  "DEFAULT_MAX_ACCELERATION需要 " _LOGICAL_AXES_STR "个元素。");
+static_assert(COUNT(sanity_arr_3) <= DISTINCT_AXES, "DEFAULT_MAX_ACCELERATION的元素太多。" _EXTRA_NOTE);
+static_assert(_PLUS_TEST(3), "DEFAULT_MAX_ACCELERATION的值必须为正数。");
+
+#if NUM_AXES
+  constexpr float sanity_arr_4[] = HOMING_FEEDRATE_MM_M;
+  static_assert(COUNT(sanity_arr_4) == NUM_AXES,  "HOMING_FEEDRATE_MM_M需要 " _NUM_AXES_STR "个元素（且仅此）.");
+  static_assert(_PLUS_TEST(4), "HOMING_FEEDRATE_MM_M的值必须为正数。");
+#endif
+
+#ifdef MAX_ACCEL_EDIT_VALUES
+  constexpr float sanity_arr_5[] = MAX_ACCEL_EDIT_VALUES;
+  static_assert(COUNT(sanity_arr_5) >= LOGICAL_AXES, "MAX_ACCEL_EDIT_VALUES需要 " _LOGICAL_AXES_STR "个元素。");
+  static_assert(COUNT(sanity_arr_5) <= LOGICAL_AXES, "MAX_ACCEL_EDIT_VALUES的元素太多。" _LOGICAL_AXES_STR "个元素即可。");
+  static_assert(_PLUS_TEST(5), "MAX_ACCEL_EDIT_VALUES的值必须为正数。");
+#endif
+
+#ifdef MAX_FEEDRATE_EDIT_VALUES
+  constexpr float sanity_arr_6[] = MAX_FEEDRATE_EDIT_VALUES;
+  static_assert(COUNT(sanity_arr_6) >= LOGICAL_AXES, "MAX_FEEDRATE_EDIT_VALUES需要 " _LOGICAL_AXES_STR "个元素。");
+  static_assert(COUNT(sanity_arr_6) <= LOGICAL_AXES, "MAX_FEEDRATE_EDIT_VALUES的元素太多。" _LOGICAL_AXES_STR "个元素即可。");
+  static_assert(_PLUS_TEST(6), "MAX_FEEDRATE_EDIT_VALUES的值必须为正数。");
+#endif
+
+#ifdef MAX_JERK_EDIT_VALUES
+  constexpr float sanity_arr_7[] = MAX_JERK_EDIT_VALUES;
+  static_assert(COUNT(sanity_arr_7) >= LOGICAL_AXES, "MAX_JERK_EDIT_VALUES需要 " _LOGICAL_AXES_STR "个元素。");
+  static_assert(COUNT(sanity_arr_7) <= LOGICAL_AXES, "MAX_JERK_EDIT_VALUES的元素太多。" _LOGICAL_AXES_STR "个元素即可。");
+  static_assert(_PLUS_TEST(7), "MAX_JERK_EDIT_VALUES的值必须为正数。");
+#endif
+
+#ifdef MANUAL_FEEDRATE
+  constexpr float sanity_arr_8[] = MANUAL_FEEDRATE;
+  static_assert(COUNT(sanity_arr_8) >= LOGICAL_AXES, "MANUAL_FEEDRATE需要 " _LOGICAL_AXES_STR "个元素。");
+  static_assert(COUNT(sanity_arr_8) <= LOGICAL_AXES, "MANUAL_FEEDRATE的元素太多。" _LOGICAL_AXES_STR "个元素即可。");
+  static_assert(_PLUS_TEST(8), "MANUAL_FEEDRATE的值必须为正数。");
+#endif
+
+#undef __PLUS_TEST
+#undef _PLUS_TEST
+#undef _EXTRA_NOTE
+
+#if ALL(CNC_COORDINATE_SYSTEMS, NO_WORKSPACE_OFFSETS)
+  #error "CNC_COORDINATE_SYSTEMS与NO_WORKSPACE_OFFSETS不兼容。"
+#endif
+
+#if !BLOCK_BUFFER_SIZE || !IS_POWER_OF_2(BLOCK_BUFFER_SIZE)
+  #error "BLOCK_BUFFER_SIZE必须是2的幂。"
+#elif BLOCK_BUFFER_SIZE > 64
+  #error "一个非常大的BLOCK_BUFFER_SIZE是不需要的，并且需要更长的时间来排空暂停/取消的缓冲区。"
+#endif
+
+#if ENABLED(LED_CONTROL_MENU) && NONE(HAS_MARLINUI_MENU, DWIN_LCD_PROUI)
+  #error "LED_CONTROL_MENU需要实现菜单的LCD控制器。"
+#endif
+
+#if ENABLED(CUSTOM_MENU_MAIN) && NONE(HAS_MARLINUI_MENU, TOUCH_UI_FTDI_EVE, TFT_LVGL_UI)
+  #error "CUSTOM_MENU_MAIN需要实现菜单的LCD控制器。"
+#endif
+
+#if ENABLED(CASE_LIGHT_USE_NEOPIXEL) && DISABLED(NEOPIXEL_LED)
+  #error "CASE_LIGHT_USE_NEOPIXEL需要NEOPIXEL_LED。"
+#endif
+
+#if ENABLED(SKEW_CORRECTION)
+  #if !defined(XY_SKEW_FACTOR) && !(defined(XY_DIAG_AC) && defined(XY_DIAG_BD) && defined(XY_SIDE_AD))
+    #error "SKEW_CORRECTION需要XY_SKEW_FACTOR或XY_DIAG_AC，XY_DIAG_BD，XY_SIDE_AD。"
+  #endif
+  #if ENABLED(SKEW_CORRECTION_FOR_Z)
+    #if !defined(XZ_SKEW_FACTOR) && !(defined(XZ_DIAG_AC) && defined(XZ_DIAG_BD) && defined(XZ_SIDE_AD))
+      #error "SKEW_CORRECTION需要XZ_SKEW_FACTOR或XZ_DIAG_AC，XZ_DIAG_BD，XZ_SIDE_AD。"
+    #endif
+    #if !defined(YZ_SKEW_FACTOR) && !(defined(YZ_DIAG_AC) && defined(YZ_DIAG_BD) && defined(YZ_SIDE_AD))
+      #error "SKEW_CORRECTION需要YZ_SKEW_FACTOR或YZ_DIAG_AC，YZ_DIAG_BD，YZ_SIDE_AD。"
+    #endif
+  #endif
+#endif
+
+#if ALL(X_AXIS_TWIST_COMPENSATION, NOZZLE_AS_PROBE)
+  #error "X_AXIS_TWIST_COMPENSATION与NOZZLE_AS_PROBE不兼容。"
+#endif
+
+#if ENABLED(POWER_LOSS_RECOVERY)
+  #if ENABLED(BACKUP_POWER_SUPPLY) && !PIN_EXISTS(POWER_LOSS)
+    #error "BACKUP_POWER_SUPPLY需要POWER_LOSS_PIN。"
+  #elif ALL(POWER_LOSS_PULLUP, POWER_LOSS_PULLDOWN)
+    #error "不能同时启用POWER_LOSS_PULLUP和POWER_LOSS_PULLDOWN。"
+  #elif ENABLED(POWER_LOSS_RECOVER_ZHOME) && Z_HOME_TO_MAX
+    #error "在归位到ZMAX的机器上不需要POWER_LOSS_RECOVER_ZHOME。"
+  #elif ALL(IS_CARTESIAN, POWER_LOSS_RECOVER_ZHOME) && Z_HOME_TO_MIN && !defined(POWER_LOSS_ZHOME_POS)
+    #error "POWER_LOSS_RECOVER_ZHOME需要为归位到ZMIN的笛卡尔机器设置POWER_LOSS_ZHOME_POS。"
+  #endif
+#endif
+
+#if ENABLED(Z_STEPPER_AUTO_ALIGN)
+  #if NUM_Z_STEPPERS <= 1
+    #error "Z_STEPPER_AUTO_ALIGN需要多于一个Z步进驱动器。"
+  #elif !HAS_BED_PROBE
+    #error "Z_STEPPER_AUTO_ALIGN需要Z床探针。"
+  #elif HAS_Z_STEPPER_ALIGN_STEPPER_XY
+    static_assert(WITHIN(Z_STEPPER_ALIGN_AMP, 0.5, 2.0), "Z_STEPPER_ALIGN_AMP必须在0.5到2.0之间。");
+    #if NUM_Z_STEPPERS < 3
+      #error "Z_STEPPER_ALIGN_STEPPER_XY需要3个或4个Z步进驱动器。"
+    #endif
+  #endif
+#endif
+
+#if ENABLED(MECHANICAL_GANTRY_CALIBRATION)
+  #if NONE(HAS_MOTOR_CURRENT_DAC, HAS_MOTOR_CURRENT_SPI, HAS_MOTOR_CURRENT_DAC, HAS_TRINAMIC_CONFIG, HAS_MOTOR_CURRENT_PWM)
+    #error "强烈建议使用可调电流驱动器以防止损坏。请注释此行以继续。"
+  #elif !defined(GANTRY_CALIBRATION_CURRENT)
+    #error "MECHANICAL_GANTRY_CALIBRATION需要设置GANTRY_CALIBRATION_CURRENT。"
+  #elif !defined(GANTRY_CALIBRATION_EXTRA_HEIGHT)
+    #error "MECHANICAL_GANTRY_CALIBRATION需要设置GANTRY_CALIBRATION_EXTRA_HEIGHT。"
+  #elif !defined(GANTRY_CALIBRATION_FEEDRATE)
+    #error "MECHANICAL_GANTRY_CALIBRATION需要设置GANTRY_CALIBRATION_FEEDRATE。"
+  #elif ENABLED(Z_MULTI_ENDSTOPS)
+    #error "对不起！MECHANICAL_GANTRY_CALIBRATION无法与Z_MULTI_ENDSTOPS一起使用。"
+  #elif ENABLED(Z_STEPPER_AUTO_ALIGN)
+    #error "对不起！MECHANICAL_GANTRY_CALIBRATION无法与Z_STEPPER_AUTO_ALIGN一起使用。"
+  #endif
+  #if defined(GANTRY_CALIBRATION_SAFE_POSITION) && !defined(GANTRY_CALIBRATION_XY_PARK_FEEDRATE)
+    #error "GANTRY_CALIBRATION_SAFE_POSITION需要设置GANTRY_CALIBRATION_XY_PARK_FEEDRATE。"
+  #endif
+#endif
+
+#if ENABLED(PRINTCOUNTER) && DISABLED(EEPROM_SETTINGS)
+  #error "PRINTCOUNTER需要EEPROM_SETTINGS。"
+#endif
+
+#if ENABLED(USB_FLASH_DRIVE_SUPPORT) && !PINS_EXIST(USB_CS, USB_INTR) && DISABLED(USE_OTG_USB_HOST)
+  #error "USB_FLASH_DRIVE_SUPPORT需要USB_CS_PIN和USB_INTR_PIN。"
+#endif
+
+#if ENABLED(USE_OTG_USB_HOST) && !defined(HAS_OTG_USB_HOST_SUPPORT)
+  #error "当前板卡不支持USE_OTG_USB_HOST。"
+#endif
+
+#if ENABLED(SD_FIRMWARE_UPDATE) && !defined(__AVR_ATmega2560__)
+  #error "SD_FIRMWARE_UPDATE需要基于ATmega2560（Arduino Mega）的板卡。"
+#endif
+
+#if ENABLED(GCODE_MACROS) && !WITHIN(GCODE_MACROS_SLOTS, 1, 10)
+  #error "GCODE_MACROS_SLOTS必须是1到10之间的数字。"
+#endif
+
+#if ENABLED(BACKLASH_COMPENSATION)
+  #ifndef BACKLASH_DISTANCE_MM
+    #error "BACKLASH_COMPENSATION需要BACKLASH_DISTANCE_MM。"
+  #elif !defined(BACKLASH_CORRECTION)
+    #error "BACKLASH_COMPENSATION需要BACKLASH_CORRECTION。"
+  #elif ANY(MARKFORGED_XY, MARKFORGED_YX)
+    constexpr float backlash_arr[] = BACKLASH_DISTANCE_MM;
+    static_assert(!backlash_arr[CORE_AXIS_1] && !backlash_arr[CORE_AXIS_2],
+                  "BACKLASH_COMPENSATION只能应用于MarkForged系统上的" STRINGIFY(NORMAL_AXIS) "。");
+  #elif IS_CORE
+    constexpr float backlash_arr[] = BACKLASH_DISTANCE_MM;
+    #ifndef CORE_BACKLASH
+      static_assert(!backlash_arr[CORE_AXIS_1] && !backlash_arr[CORE_AXIS_2],
+                  "BACKLASH_COMPENSATION只能应用于CORE系统上的" STRINGIFY(NORMAL_AXIS) "。");
+    #endif
+  #endif
+#endif
+
+#if ENABLED(GRADIENT_MIX) && MIXING_VIRTUAL_TOOLS < 2
+  #error "GRADIENT_MIX需要2个或更多的MIXING_VIRTUAL_TOOLS。"
+#endif
+
+/**
+ * 照片 G-code 的要求
+ */
+#if ENABLED(PHOTO_GCODE)
+  #if (PIN_EXISTS(CHDK) + PIN_EXISTS(PHOTOGRAPH) + defined(PHOTO_SWITCH_POSITION)) > 1
+    #error "请只定义 CHDK_PIN、PHOTOGRAPH_PIN 或 PHOTO_SWITCH_POSITION 中的一个。"
+  #elif defined(PHOTO_SWITCH_POSITION) && !defined(PHOTO_POSITION)
+    #error "PHOTO_SWITCH_POSITION 需要定义 PHOTO_POSITION。"
+  #elif PIN_EXISTS(CHDK) && defined(CHDK_DELAY)
+    #error "CHDK_DELAY 已被 PHOTO_SWITCH_MS 取代。"
+  #elif PIN_EXISTS(CHDK) && !defined(PHOTO_SWITCH_MS)
+    #error "CHDK_PIN 需要定义 PHOTO_SWITCH_MS。"
+  #elif defined(PHOTO_RETRACT_MM)
+    static_assert(PHOTO_RETRACT_MM + 0 >= 0, "PHOTO_RETRACT_MM 必须大于等于 0。");
+  #endif
+#endif
+
+/**
+ * 高级 PRINTCOUNTER 设置
+ */
+#if ENABLED(PRINTCOUNTER)
+  #if defined(SERVICE_INTERVAL_1) != defined(SERVICE_NAME_1)
+    #error "SERVICE_NAME_1 和 SERVICE_INTERVAL_1 都是必需的。"
+  #elif defined(SERVICE_INTERVAL_2) != defined(SERVICE_NAME_2)
+    #error "SERVICE_NAME_2 和 SERVICE_INTERVAL_2 都是必需的。"
+  #elif defined(SERVICE_INTERVAL_3) != defined(SERVICE_NAME_3)
+    #error "SERVICE_NAME_3 和 SERVICE_INTERVAL_3 都是必需的。"
+  #endif
+#endif
+
+/**
+ * 某些设置需要软限位开关
+ */
+#if !ALL(MIN_SOFTWARE_ENDSTOPS, MAX_SOFTWARE_ENDSTOPS)
+  #if ENABLED(DUAL_X_CARRIAGE)
+    #error "DUAL_X_CARRIAGE 需要同时定义 MIN_ 和 MAX_SOFTWARE_ENDSTOPS。"
+  #elif HAS_HOTEND_OFFSET
+    #error "带有偏移的多个喷头需要同时定义 MIN_ 和 MAX_SOFTWARE_ENDSTOPS。"
+  #endif
+#endif
+
+/**
+ * 验证 MKS_PWC
+ */
+#if ENABLED(MKS_PWC) && PSU_ACTIVE_STATE != HIGH
+  #error "MKS_PWC 需要将 PSU_ACTIVE_STATE 设置为 HIGH。"
+#endif
+
+/**
+ * 确保此选项是有意设置的
+ */
+#if ENABLED(PSU_CONTROL)
+  #ifndef PSU_ACTIVE_STATE
+    #error "PSU_CONTROL 需要定义 PSU_ACTIVE_STATE 为 'HIGH' 或 'LOW'。"
+  #elif !PIN_EXISTS(PS_ON)
+    #error "PSU_CONTROL 需要定义 PS_ON_PIN。"
+  #elif POWER_OFF_DELAY < 0
+    #error "POWER_OFF_DELAY 必须是正数。"
+  #elif ENABLED(POWER_OFF_WAIT_FOR_COOLDOWN) && !(defined(AUTO_POWER_E_TEMP) || defined(AUTO_POWER_CHAMBER_TEMP) || defined(AUTO_POWER_COOLER_TEMP))
+    #error "POWER_OFF_WAIT_FOR_COOLDOWN 需要定义 AUTO_POWER_E_TEMP、AUTO_POWER_CHAMBER_TEMP 和/或 AUTO_POWER_COOLER_TEMP。"
+  #endif
+#endif
+
+#if HAS_CUTTER
+  #ifndef CUTTER_POWER_UNIT
+    #error "带有主轴或激光的 CUTTER_POWER_UNIT 是必需的。"
+  #elif !CUTTER_UNIT_IS(PWM255) && !CUTTER_UNIT_IS(PERCENT) && !CUTTER_UNIT_IS(RPM) && !CUTTER_UNIT_IS(SERVO)
+    #error "CUTTER_POWER_UNIT 必须是 PWM255、PERCENT、RPM 或 SERVO。"
+  #endif
+
+  #if ENABLED(LASER_FEATURE)
+    #if ENABLED(SPINDLE_CHANGE_DIR)
+      #error "SPINDLE_CHANGE_DIR 和 LASER_FEATURE 不兼容。"
+    #elif ENABLED(LASER_MOVE_G0_OFF)
+      #error "LASER_MOVE_G0_OFF 不再需要，G0 和 G28 不能施加功率。"
+    #elif ENABLED(LASER_MOVE_G28_OFF)
+      #error "LASER_MOVE_G0_OFF 不再需要，G0 和 G28 不能施加功率。"
+    #elif ENABLED(LASER_MOVE_POWER)
+      #error "LASER_MOVE_POWER 不再适用。"
+    #endif
+    #if ENABLED(LASER_POWER_TRAP)
+      #if DISABLED(SPINDLE_LASER_USE_PWM)
+        #error "LASER_POWER_TRAP 需要 SPINDLE_LASER_USE_PWM 才能运行。"
+      #endif
+    #endif
+  #else
+    #if SPINDLE_LASER_POWERUP_DELAY < 1
+      #error "SPINDLE_LASER_POWERUP_DELAY 必须大于 0。"
+    #elif SPINDLE_LASER_POWERDOWN_DELAY < 1
+      #error "SPINDLE_LASER_POWERDOWN_DELAY 必须大于 0。"
+    #endif
+  #endif
+
+  #define _PIN_CONFLICT(P) (PIN_EXISTS(P) && P##_PIN == SPINDLE_LASER_PWM_PIN)
+  #if ALL(SPINDLE_FEATURE, LASER_FEATURE)
+    #error "只能启用SPINDLE_FEATURE或LASER_FEATURE中的一个。"
+  #elif NONE(SPINDLE_SERVO, SPINDLE_LASER_USE_PWM) && !PIN_EXISTS(SPINDLE_LASER_ENA)
+    #error "（SPINDLE|LASER）_FEATURE需要SPINDLE_LASER_ENA_PIN、SPINDLE_LASER_USE_PWM或SPINDLE_SERVO来控制电源。"
+  #elif ENABLED(SPINDLE_CHANGE_DIR) && !PIN_EXISTS(SPINDLE_DIR)
+    #error "SPINDLE_CHANGE_DIR需要SPINDLE_DIR_PIN。"
+  #elif ENABLED(SPINDLE_LASER_USE_PWM)
+    #if !defined(SPINDLE_LASER_PWM_PIN) || SPINDLE_LASER_PWM_PIN < 0
+      #error "SPINDLE_LASER_USE_PWM需要SPINDLE_LASER_PWM_PIN。"
+    #elif !_TEST_PWM(SPINDLE_LASER_PWM_PIN)
+      #error "SPINDLE_LASER_PWM_PIN未分配给PWM引脚。"
+    #elif !defined(SPINDLE_LASER_PWM_INVERT)
+      #error "（SPINDLE|LASER）_FEATURE需要SPINDLE_LASER_PWM_INVERT。"
+    #elif !(defined(SPEED_POWER_MIN) && defined(SPEED_POWER_MAX) && defined(SPEED_POWER_STARTUP))
+      #error "SPINDLE_LASER_USE_PWM方程常数缺失。"
+    #elif _PIN_CONFLICT(X_MIN)
+      #error "SPINDLE_LASER_PWM_PIN与X_MIN_PIN冲突。"
+    #elif _PIN_CONFLICT(X_MAX)
+      #error "SPINDLE_LASER_PWM_PIN与X_MAX_PIN冲突。"
+    #elif _PIN_CONFLICT(Z_STEP)
+      #error "SPINDLE_LASER_PWM_PIN与Z_STEP_PIN冲突。"
+    #elif _PIN_CONFLICT(CASE_LIGHT)
+      #error "SPINDLE_LASER_PWM_PIN与CASE_LIGHT_PIN冲突。"
+    #elif _PIN_CONFLICT(E0_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E0_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(E1_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E1_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(E2_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E2_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(E3_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E3_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(E4_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E4_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(E5_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E5_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(E6_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E6_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(E7_AUTO_FAN)
+      #error "SPINDLE_LASER_PWM_PIN与E7_AUTO_FAN_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN)
+      #error "SPINDLE_LASER_PWM_PIN与FAN0_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN1)
+      #error "SPINDLE_LASER_PWM_PIN与FAN1_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN2)
+      #error "SPINDLE_LASER_PWM_PIN与FAN2_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN3)
+      #error "SPINDLE_LASER_PWM_PIN与FAN3_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN4)
+      #error "SPINDLE_LASER_PWM_PIN与FAN4_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN5)
+      #error "SPINDLE_LASER_PWM_PIN与FAN5_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN6)
+      #error "SPINDLE_LASER_PWM_PIN与FAN6_PIN冲突。"
+    #elif _PIN_CONFLICT(FAN7)
+      #error "SPINDLE_LASER_PWM_PIN与FAN7_PIN冲突。"
+    #elif _PIN_CONFLICT(CONTROLLERFAN)
+      #error "SPINDLE_LASER_PWM_PIN与CONTROLLERFAN_PIN冲突。"
+    #elif _PIN_CONFLICT(MOTOR_CURRENT_PWM_XY)
+      #error "SPINDLE_LASER_PWM_PIN与MOTOR_CURRENT_PWM_XY冲突。"
+    #elif _PIN_CONFLICT(MOTOR_CURRENT_PWM_Z)
+      #error "SPINDLE_LASER_PWM_PIN与MOTOR_CURRENT_PWM_Z冲突。"
+    #elif _PIN_CONFLICT(MOTOR_CURRENT_PWM_E)
+      #error "SPINDLE_LASER_PWM_PIN与MOTOR_CURRENT_PWM_E冲突。"
+    #endif
+  #endif
+  #undef _PIN_CONFLICT
+
+  #ifdef LASER_SAFETY_TIMEOUT_MS
+    static_assert(LASER_SAFETY_TIMEOUT_MS < (DEFAULT_STEPPER_TIMEOUT_SEC) * 1000UL, "LASER_SAFETY_TIMEOUT_MS必须小于DEFAULT_STEPPER_TIMEOUT_SEC（" STRINGIFY(DEFAULT_STEPPER_TIMEOUT_SEC) " 秒）");
+  #endif
+
+#endif
+
+#if ENABLED(COOLANT_CONTROL)
+  #if NONE(COOLANT_MIST, COOLANT_FLOOD)
+    #error "COOLANT_CONTROL需要COOLANT_MIST或COOLANT_FLOOD之一。"
+  #elif ENABLED(COOLANT_MIST) && !PIN_EXISTS(COOLANT_MIST)
+    #error "COOLANT_MIST需要定义COOLANT_MIST_PIN。"
+  #elif ENABLED(COOLANT_FLOOD) && !PIN_EXISTS(COOLANT_FLOOD)
+    #error "COOLANT_FLOOD需要定义COOLANT_FLOOD_PIN。"
+  #endif
+#endif
+
+#if HAS_ADC_BUTTONS && defined(ADC_BUTTON_DEBOUNCE_DELAY) && ADC_BUTTON_DEBOUNCE_DELAY < 16
+  #error "ADC_BUTTON_DEBOUNCE_DELAY必须大于16。"
+#endif
+
+/**
+ * 检查在TMC驱动器与SD共享SPI总线的板子上是否启用了MONITOR_DRIVER_STATUS。
+ */
+#if HAS_TMC_SPI && ALL(MONITOR_DRIVER_STATUS, HAS_MEDIA, USES_SHARED_SPI)
+  #error "共享SPI的板子上不能同时使用MONITOR_DRIVER_STATUS和SDSUPPORT。"
+#endif
+
+// 虽然它只是切换STEP，但EDGE_STEPPING需要逻辑状态为HIGH
+#if ENABLED(EDGE_STEPPING)
+  #if AXIS_HAS_DEDGE(X) && STEP_STATE_X != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_X为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(Y) && STEP_STATE_Y != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_Y为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(Z) && STEP_STATE_Z != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_Z为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(I) && STEP_STATE_I != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_I为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(J) && STEP_STATE_J != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_J为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(K) && STEP_STATE_K != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_K为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(U) && STEP_STATE_U != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_U为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(V) && STEP_STATE_V != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_V为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(W) && STEP_STATE_W != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_W为HIGH。"
+  #endif
+  #if AXIS_HAS_DEDGE(E0) && STEP_STATE_E != HIGH
+    #error "EDGE_STEPPING需要STEP_STATE_E为HIGH。"
+  #endif
+#endif
+
+// G60/G61位置保存
+#if SAVED_POSITIONS > 256
+  #error "SAVED_POSITIONS必须是0到256之间的整数。"
+#endif
+
+/**
+ * 触摸屏校准
+ */
+#if !MB(SIMULATED) && ENABLED(TFT_TOUCH_DEVICE_XPT2046) && DISABLED(TOUCH_SCREEN_CALIBRATION) \
+    && !(defined(TOUCH_CALIBRATION_X) && defined(TOUCH_CALIBRATION_Y) && defined(TOUCH_OFFSET_X) && defined(TOUCH_OFFSET_Y))
+  #error "对于禁用TOUCH_SCREEN_CALIBRATION的电阻式触摸屏，需要TOUCH_CALIBRATION_[XY]和TOUCH_OFFSET_[XY]。"
+#endif
+
+/**
+ * WiFi选项的合理性检查
+ */
+#if ENABLED(ESP3D_WIFISUPPORT) && DISABLED(ARDUINO_ARCH_ESP32)
+  #error "ESP3D_WIFISUPPORT需要一个ESP32 MOTHERBOARD。"
+#elif ENABLED(WEBSUPPORT) && NONE(ARDUINO_ARCH_ESP32, WIFISUPPORT)
+  #error "WEBSUPPORT需要WIFISUPPORT和一个ESP32 MOTHERBOARD。"
+#elif ALL(ESP3D_WIFISUPPORT, WIFISUPPORT)
+  #error "只能启用ESP3D_WIFISUPPORT或WIFISUPPORT之一。"
+#endif
+
+/**
+ * 密码功能的合理性检查
+ */
+#if ENABLED(PASSWORD_FEATURE)
+  #if NONE(HAS_MARLINUI_MENU, PASSWORD_UNLOCK_GCODE, PASSWORD_CHANGE_GCODE)
+    #error "没有PASSWORD_UNLOCK_GCODE、PASSWORD_CHANGE_GCODE或支持的LCD，无法解锁打印机或设置密码。"
+  #elif DISABLED(EEPROM_SETTINGS)
+    #warning "在没有EEPROM_SETTINGS的情况下，密码设置将在断电后丢失。"
+  #endif
+#endif
+
+/**
+ * MEATPACK和BINARY_FILE_TRANSFER功能的合理性检查
+ */
+#if ALL(HAS_MEATPACK, BINARY_FILE_TRANSFER)
+  #error "启用MEATPACK_ON_SERIAL_PORT_*或BINARY_FILE_TRANSFER只能选择其中一个。"
+#endif
+
+/**
+ * 窄屏LCD菜单和探针偏移向导的合理性检查
+ */
+#if ALL(SLIM_LCD_MENUS, PROBE_OFFSET_WIZARD)
+  #error "SLIM_LCD_MENUS禁用了\"Advanced Settings > Probe Offsets > PROBE_OFFSET_WIZARD\"。"
+#endif
+
+/**
+ * NOZZLE_CLEAN_FEATURE中唯一的起始和停止值的合理性检查
+ */
+#if ENABLED(NOZZLE_CLEAN_FEATURE)
+  constexpr xyz_pos_t start_xyz[8] = NOZZLE_CLEAN_START_POINT,
+                        end_xyz[8] = NOZZLE_CLEAN_END_POINT;
+  #define _CLEAN_ASSERT(N) static_assert(N >= HOTENDS || end_xyz[N].x != start_xyz[N].x || TERN(NOZZLE_CLEAN_NO_Y, false, end_xyz[N].y != start_xyz[N].y), \
+                        "在HOTEND " STRINGIFY(N) "上，NOZZLE_CLEAN的起始和结束必须不同。")
+  _CLEAN_ASSERT(0); _CLEAN_ASSERT(1);
+  _CLEAN_ASSERT(2); _CLEAN_ASSERT(3);
+  _CLEAN_ASSERT(4); _CLEAN_ASSERT(5);
+  _CLEAN_ASSERT(6); _CLEAN_ASSERT(7);
+  #undef _CLEAN_ASSERT
+#endif
+
+/**
+ * NOZZLE_CLEAN_FEATURE中喷头清洗图案设置的合理性检查
+ */
+#if ENABLED(NOZZLE_CLEAN_FEATURE)
+  #if NONE(NOZZLE_CLEAN_PATTERN_LINE, NOZZLE_CLEAN_PATTERN_ZIGZAG, NOZZLE_CLEAN_PATTERN_CIRCLE)
+    #error "NOZZLE_CLEAN_FEATURE需要至少一个NOZZLE_CLEAN_PATTERN_LINE、NOZZLE_CLEAN_PATTERN_ZIGZAG和/或NOZZLE_CLEAN_PATTERN_CIRCLE。"
+  #elif NOZZLE_CLEAN_DEFAULT_PATTERN == 0 && DISABLED(NOZZLE_CLEAN_PATTERN_LINE)
+    #error "NOZZLE_CLEAN_DEFAULT_PATTERN 0 (LINE)不可用。请启用NOZZLE_CLEAN_PATTERN_LINE或设置不同的NOZZLE_CLEAN_DEFAULT_PATTERN。"
+  #elif NOZZLE_CLEAN_DEFAULT_PATTERN == 1 && DISABLED(NOZZLE_CLEAN_PATTERN_ZIGZAG)
+    #error "NOZZLE_CLEAN_DEFAULT_PATTERN 1 (ZIGZAG)不可用。请启用NOZZLE_CLEAN_PATTERN_ZIGZAG或设置不同的NOZZLE_CLEAN_DEFAULT_PATTERN。"
+  #elif NOZZLE_CLEAN_DEFAULT_PATTERN == 2 && DISABLED(NOZZLE_CLEAN_PATTERN_CIRCLE)
+    #error "NOZZLE_CLEAN_DEFAULT_PATTERN 2 (CIRCLE)不可用。请启用NOZZLE_CLEAN_PATTERN_CIRCLE或设置不同的NOZZLE_CLEAN_DEFAULT_PATTERN。"
+  #endif
+#endif
+
+/**
+ * MIXING_EXTRUDER和DISTINCT_E_FACTORS的合理性检查，它们不兼容
+ */
+#if ALL(MIXING_EXTRUDER, DISTINCT_E_FACTORS)
+  #error "MIXING_EXTRUDER无法与DISTINCT_E_FACTORS一起使用。但您可以在DISTINCT_E_FACTORS下使用SINGLENOZZLE。"
+#endif
+
+/**
+ * 验证步进驱动类型是否有效
+ */
+#define _BAD_DRIVER(A) (defined(A##_DRIVER_TYPE) && !_DRIVER_ID(A##_DRIVER_TYPE))
+#if _BAD_DRIVER(X)
+  #error "X_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(Y)
+  #error "Y_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(Z)
+  #error "Z_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(I)
+  #error "I_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(J)
+  #error "J_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(K)
+  #error "K_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(U)
+  #error "U_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(V)
+  #error "V_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(W)
+  #error "W_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(X2)
+  #error "X2_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(Y2)
+  #error "Y2_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(Z2)
+  #error "Z2_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(Z3)
+  #error "Z3_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(Z4)
+  #error "Z4_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E0)
+  #error "E0_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E1)
+  #error "E1_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E2)
+  #error "E2_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E3)
+  #error "E3_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E4)
+  #error "E4_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E5)
+  #error "E5_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E6)
+  #error "E6_DRIVER_TYPE 未被识别。"
+#endif
+#if _BAD_DRIVER(E7)
+  #error "E7_DRIVER_TYPE 未被识别。"
+#endif
+#undef _BAD_DRIVER
+
+/**
+ * DGUS_LCD_UI RELOADED 需要特定的功能支持。
+ */
+#if DGUS_UI_IS(RELOADED)
+  #if BUFSIZE < 4
+    #error "DGUS_LCD_UI RELOADED 需要 BUFSIZE 至少为 4。"
+  #elif HOTENDS < 1
+    #error "DGUS_LCD_UI RELOADED 需要至少 1 个喷嘴。"
+  #elif EXTRUDERS < 1
+    #error "DGUS_LCD_UI RELOADED 需要至少 1 个挤出机。"
+  #elif !HAS_HEATED_BED
+    #error "DGUS_LCD_UI RELOADED 需要加热床。"
+  #elif FAN_COUNT < 1
+    #error "DGUS_LCD_UI RELOADED 需要风扇。"
+  #elif !HAS_BED_PROBE
+    #error "DGUS_LCD_UI RELOADED 需要床检测。"
+  #elif !HAS_MESH
+    #error "DGUS_LCD_UI RELOADED 需要网格调平。"
+  #elif DISABLED(LCD_BED_TRAMMING)
+    #error "DGUS_LCD_UI RELOADED 需要 LCD_BED_TRAMMING。"
+  #elif DISABLED(BABYSTEP_ALWAYS_AVAILABLE)
+    #error "DGUS_LCD_UI RELOADED 需要 BABYSTEP_ALWAYS_AVAILABLE。"
+  #elif DISABLED(BABYSTEP_ZPROBE_OFFSET)
+    #error "DGUS_LCD_UI RELOADED 需要 BABYSTEP_ZPROBE_OFFSET。"
+  #elif ENABLED(HOME_AFTER_DEACTIVATE)
+    #error "DGUS_LCD_UI RELOADED 需要禁用 HOME_AFTER_DEACTIVATE。"
+  #elif ENABLED(AUTO_BED_LEVELING_UBL) && DISABLED(UBL_SAVE_ACTIVE_ON_M500)
+    #warning "没有 UBL_SAVE_ACTIVE_ON_M500，使用触摸屏时你的网格将不会保存。"
+  #endif
+#endif
+
+/**
+ * DGUS_LCD_UI IA_CREALITY 需要特定的功能支持。
+ */
+#if DGUS_UI_IS(IA_CREALITY)
+  #if DISABLED(ADVANCED_PAUSE_FEATURE)
+    #error "DGUS_LCD_UI IA_CREALITY 需要 ADVANCED_PAUSE_FEATURE。"
+  #elif DISABLED(LCD_BED_TRAMMING)
+    #error "DGUS_LCD_UI IA_CREALITY 需要 LCD_BED_TRAMMING。"
+  #elif DISABLED(CLASSIC_JERK)
+    #error "DGUS_LCD_UI IA_CREALITY 需要 CLASSIC_JERK。"
+  #elif DISABLED(BABYSTEPPING)
+    #error "DGUS_LCD_UI IA_CREALITY 需要 BABYSTEPPING。"
+  #elif NUM_RUNOUT_SENSORS > 1
+    #error "DGUS_LCD_UI IA_CREALITY 需要 NUM_RUNOUT_SENSORS 小于 2。"
+  #elif NONE(AUTO_BED_LEVELING_BILINEAR, AUTO_BED_LEVELING_UBL, MESH_BED_LEVELING)
+    #error "DGUS_LCD_UI IA_CREALITY 需要 AUTO_BED_LEVELING_BILINEAR、AUTO_BED_LEVELING_UBL 或 MESH_BED_LEVELING。"
+  #endif
+#endif
+
+/**
+ * DGUS_LCD_UI E3S1PRO 需要特定的功能支持。
+ */
+#if DGUS_UI_IS(E3S1PRO)
+  #if BUFSIZE < 4
+    #error "DGUS_LCD_UI E3S1PRO 需要 BUFSIZE 至少为 4。"
+  #elif !(HOTENDS == 1)
+    #error "DGUS_LCD_UI E3S1PRO 需要 1 个喷嘴。"
+  #elif !(EXTRUDERS == 1)
+    #error "DGUS_LCD_UI E3S1PRO 需要至少 1 个挤出机。"
+  #elif !HAS_HEATED_BED
+    #error "DGUS_LCD_UI E3S1PRO 需要加热床。"
+  #elif FAN_COUNT < 1
+    #error "DGUS_LCD_UI E3S1PRO 需要风扇。"
+  #elif !HAS_BED_PROBE
+    #error "DGUS_LCD_UI E3S1PRO 需要床检测。"
+  #elif !HAS_MESH
+    #error "DGUS_LCD_UI E3S1PRO 需要网格调平。"
+  #elif !HAS_MEDIA
+    #error "DGUS_LCD_UI E3S1PRO 需要 SDSUPPORT。"
+  #elif DISABLED(POWER_LOSS_RECOVERY)
+    #error "DGUS_LCD_UI E3S1PRO 需要 POWER_LOSS_RECOVERY。"
+  #elif DISABLED(LCD_BED_TRAMMING)
+    #error "DGUS_LCD_UI E3S1PRO 需要 LCD_BED_TRAMMING。"
+  #elif DISABLED(BABYSTEP_ALWAYS_AVAILABLE)
+    #error "DGUS_LCD_UI E3S1PRO 需要 BABYSTEP_ALWAYS_AVAILABLE。"
+  #elif DISABLED(BABYSTEP_ZPROBE_OFFSET)
+    #error "DGUS_LCD_UI E3S1PRO 需要 BABYSTEP_ZPROBE_OFFSET。"
+  #elif !defined(PREHEAT_1_TEMP_HOTEND) || !defined(PREHEAT_2_TEMP_HOTEND)
+    #error "DGUS_LCD_UI E3S1PRO 需要 2 个预热预设值。"
+  #elif ENABLED(AUTO_BED_LEVELING_UBL) && DISABLED(UBL_SAVE_ACTIVE_ON_M500)
+    #warning "没有 UBL_SAVE_ACTIVE_ON_M500，使用触摸屏时你的网格将不会保存。"
+  #endif
+#endif
+
+// HAL中的JTAG支持
+#if ENABLED(DISABLE_DEBUG) && !defined(JTAGSWD_DISABLE)
+  #error "禁用调试对所选的MCU/板子不支持。"
+#elif ENABLED(DISABLE_JTAG) && !defined(JTAG_DISABLE)
+  #error "禁用JTAG对所选的MCU/板子不支持。"
+#endif
+
+// 检查upload.py的要求
+#if ENABLED(XFER_BUILD) && !ALL(SDSUPPORT, BINARY_FILE_TRANSFER, CUSTOM_FIRMWARE_UPLOAD)
+  #error "自定义上传需要SDSUPPORT、BINARY_FILE_TRANSFER和CUSTOM_FIRMWARE_UPLOAD。"
+#endif
+
+/**
+ * 输入整形要求
+ */
+#if HAS_ZV_SHAPING
+  #if ENABLED(DELTA)
+    #error "输入整形与DELTA运动学不兼容。"
+  #elif ENABLED(SCARA)
+    #error "输入整形与SCARA运动学不兼容。"
+  #elif ENABLED(TPARA)
+    #error "输入整形与TPARA运动学不兼容。"
+  #elif ENABLED(POLAR)
+    #error "输入整形与POLAR运动学不兼容。"
+  #elif ENABLED(POLARGRAPH)
+    #error "输入整形与POLARGRAPH运动学不兼容。"
+  #elif ENABLED(DIRECT_STEPPING)
+    #error "输入整形与DIRECT_STEPPING不兼容。"
+  #elif ALL(INPUT_SHAPING_X, CORE_IS_XZ)
+    #error "COREXZ不支持INPUT_SHAPING_X。"
+  #elif ALL(INPUT_SHAPING_Y, CORE_IS_YZ)
+    #error "COREYZ不支持INPUT_SHAPING_Y。"
+  #elif ANY(CORE_IS_XY, MARKFORGED_XY, MARKFORGED_YX)
+    #if !ALL(INPUT_SHAPING_X, INPUT_SHAPING_Y)
+      #error "COREXY、COREYX或MARKFORGED_*需要同时启用INPUT_SHAPING_X和INPUT_SHAPING_Y。"
+    #else
+      static_assert(SHAPING_FREQ_X == SHAPING_FREQ_Y, "COREXY/COREYX/MARKFORGED_*的SHAPING_FREQ_X和SHAPING_FREQ_Y必须相同。");
+      static_assert(SHAPING_ZETA_X == SHAPING_ZETA_Y, "COREXY/COREYX/MARKFORGED_*的SHAPING_ZETA_X和SHAPING_ZETA_Y必须相同。");
+    #endif
+  #endif
+
+  #ifdef SHAPING_MIN_FREQ
+    static_assert((SHAPING_MIN_FREQ) > 0, "SHAPING_MIN_FREQ必须大于0。");
+  #else
+    TERN_(INPUT_SHAPING_X, static_assert((SHAPING_FREQ_X) > 0, "SHAPING_FREQ_X必须大于0或者必须设置SHAPING_MIN_FREQ。"));
+    TERN_(INPUT_SHAPING_Y, static_assert((SHAPING_FREQ_Y) > 0, "SHAPING_FREQ_Y必须大于0或者必须设置SHAPING_MIN_FREQ。"));
+  #endif
+  #ifdef __AVR__
+    #if ENABLED(INPUT_SHAPING_X)
+      #if F_CPU > 16000000
+        static_assert((SHAPING_FREQ_X) == 0 || (SHAPING_FREQ_X) * 2 * 0x10000 >= (STEPPER_TIMER_RATE), "AVR 20MHz的SHAPING_FREQ_X低于最小值(20)。");
+      #else
+        static_assert((SHAPING_FREQ_X) == 0 || (SHAPING_FREQ_X) * 2 * 0x10000 >= (STEPPER_TIMER_RATE), "AVR 16MHz的SHAPING_FREQ_X低于最小值(16)。");
+      #endif
+    #endif
+    #if ENABLED(INPUT_SHAPING_Y)
+      #if F_CPU > 16000000
+        static_assert((SHAPING_FREQ_Y) == 0 || (SHAPING_FREQ_Y) * 2 * 0x10000 >= (STEPPER_TIMER_RATE), "AVR 20MHz的SHAPING_FREQ_Y低于最小值(20)。");
+      #else
+        static_assert((SHAPING_FREQ_Y) == 0 || (SHAPING_FREQ_Y) * 2 * 0x10000 >= (STEPPER_TIMER_RATE), "AVR 16MHz的SHAPING_FREQ_Y低于最小值(16)。");
+      #endif
+    #endif
+  #endif
+#endif
+
+/**
+ * 固定时间运动限制
+ */
+#if ALL(FT_MOTION, MIXING_EXTRUDER)
+  #error "FT_MOTION目前不支持MIXING_EXTRUDER。"
+#endif
+
+// 多步进限制
+static_assert(WITHIN(MULTISTEPPING_LIMIT, 1, 128) && IS_POWER_OF_2(MULTISTEPPING_LIMIT), "MULTISTEPPING_LIMIT必须为1、2、4、8、16、32、64或128。");
+
+// 单击打印
+#if ENABLED(ONE_CLICK_PRINT)
+  #if !HAS_MEDIA
+    #error "单击打印需要SD卡或闪存驱动器。"
+  #elif ENABLED(BROWSE_MEDIA_ON_INSERT)
+    #error "单击打印与BROWSE_MEDIA_ON_INSERT不兼容。"
+  #elif DISABLED(NO_SD_AUTOSTART)
+    #error "单击打印需要启用NO_SD_AUTOSTART。"
+  #elif !defined(HAS_MARLINUI_MENU)
+    #error "单击打印需要具有Marlin UI菜单的显示器。"
+  #endif
+#endif
+
+// 杂项清理
+#undef _TEST_PWM
+#undef _NUM_AXES_STR
+#undef _LOGICAL_AXES_STR
