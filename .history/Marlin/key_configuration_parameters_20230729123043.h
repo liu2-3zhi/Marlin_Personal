@@ -3,17 +3,14 @@
 //打印机主板类型
 #define MOTHERBOARD BOARD_MKS_ROBIN_E3D
 
-<<<<<<< Updated upstream
-=======
 //启用耗材传感器功能
 #define FILAMENT_RUNOUT_SENSOR_Key true
 
->>>>>>> Stashed changes
 //设置设备编号
 //777为保留配置
 //001,002,003,004,005,006,007,010,011,012
 //000表示读取"Configuration.h"的配置信息
-#define Equipment_Number 003
+#define Equipment_Number 000
 
 //————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
@@ -140,14 +137,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z 0
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -156,7 +145,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -190,46 +178,23 @@
 #define REVERSE_ENCODER_DIRECTION_key true
 
 //断料检测（true/false）
-<<<<<<< Updated upstream
-//关闭耗材传感器
-#define FILAMENT_RUNOUT_SENSOR_Key false
-=======
 //默认关闭耗材传感器开关（false/true）
 #define FILAMENT_RUNOUT_SENSOR_Key_Switch false
->>>>>>> Stashed changes
 
 //用Z Probe Stop替换ZMIN STOP（true/false）
 #define Z_Probe_Stop_Replace_ZMIN_STOP false
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-
-#endif
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -264,7 +229,6 @@
 
 #endif
 
->>>>>>> Stashed changes
 //————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
 #if Equipment_Number == 002
@@ -376,14 +340,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -1.1
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -392,7 +348,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -426,44 +381,23 @@
 #define REVERSE_ENCODER_DIRECTION_key true
 
 //断料检测（true/false）
-<<<<<<< Updated upstream
-//关闭耗材传感器
-#define FILAMENT_RUNOUT_SENSOR_Key false
-=======
 //默认关闭耗材传感器开关（false/true）
 #define FILAMENT_RUNOUT_SENSOR_Key_Switch false
->>>>>>> Stashed changes
 
 //用Z Probe Stop替换ZMIN STOP（true/false）
 #define Z_Probe_Stop_Replace_ZMIN_STOP false
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -495,7 +429,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -610,14 +543,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -3.7
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -626,7 +551,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -660,44 +584,23 @@
 #define REVERSE_ENCODER_DIRECTION_key false
 
 //断料检测（true/false）
-<<<<<<< Updated upstream
-//关闭耗材传感器
-#define FILAMENT_RUNOUT_SENSOR_Key false
-=======
 //默认关闭耗材传感器开关（false/true）
 #define FILAMENT_RUNOUT_SENSOR_Key_Switch false
->>>>>>> Stashed changes
 
 //用Z Probe Stop替换ZMIN STOP（true/false）
 #define Z_Probe_Stop_Replace_ZMIN_STOP false
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//将抛弃最差的数据的个数，剩余的求平均值
-//抛弃最差的1个数据
-#define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 1
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -729,7 +632,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -844,14 +746,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -3.95
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -860,7 +754,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -894,44 +787,23 @@
 #define REVERSE_ENCODER_DIRECTION_key false
 
 //断料检测（true/false）
-<<<<<<< Updated upstream
-//关闭耗材传感器
-#define FILAMENT_RUNOUT_SENSOR_Key false
-=======
 //默认关闭耗材传感器开关（false/true）
 #define FILAMENT_RUNOUT_SENSOR_Key_Switch false
->>>>>>> Stashed changes
 
 //用Z Probe Stop替换ZMIN STOP（true/false）
 #define Z_Probe_Stop_Replace_ZMIN_STOP false
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -963,7 +835,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -1078,14 +949,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -2
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -1094,7 +957,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -1136,31 +998,15 @@
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -1192,7 +1038,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -1307,14 +1152,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -2
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -1323,7 +1160,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -1365,31 +1201,15 @@
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -1421,7 +1241,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -1536,14 +1355,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -2
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -1552,7 +1363,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -1594,31 +1404,15 @@
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -1650,7 +1444,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -1765,14 +1558,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -2
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -1781,7 +1566,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -1823,31 +1607,15 @@
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -1879,7 +1647,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -1994,14 +1761,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -2
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -2010,7 +1769,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -2052,31 +1810,15 @@
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -2108,7 +1850,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -2223,14 +1964,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z -2
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：反向
-// Z：不反向
-#define INVERT_X_DIR_Key false
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -2239,7 +1972,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：200
@@ -2281,31 +2013,15 @@
 
 //热床多次探测
 //每个点的探测次数
-<<<<<<< Updated upstream
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //总共探测1次
 #define Number_Of_Probes_Per_Point 1
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的0个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 0
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -2337,7 +2053,6 @@
 //床边缘大小
 //大多数探针应远离床的边缘
 #define PROBING_MARGIN_KEY 35
->>>>>>> Stashed changes
 
 #endif
 
@@ -2451,14 +2166,6 @@
 #define NOZZLE_TO_PROBE_OFFSET_Z 0
 
 // 电机反向
-<<<<<<< Updated upstream
-// X：反向
-// Y：不反向
-// Z：不反向
-#define INVERT_X_DIR_Key true
-#define INVERT_Y_DIR_Key false
-#define INVERT_Z_DIR_Key false
-=======
 // X：不反向
 // Y：不反向
 // Z：不反向
@@ -2467,7 +2174,6 @@
 #define INVERT_Y_DIR_Key false
 #define INVERT_Z_DIR_Key false
 #define INVERT_E_DIR_Key false
->>>>>>> Stashed changes
 
 // 打印区域
 // X：170
@@ -2501,13 +2207,8 @@
 #define REVERSE_ENCODER_DIRECTION_key false
 
 //断料检测（true/false）
-<<<<<<< Updated upstream
-//开启耗材断料传感器
-#define FILAMENT_RUNOUT_SENSOR_Key true
-=======
 //默认关闭耗材传感器开关
 #define FILAMENT_RUNOUT_SENSOR_Key_Switch true
->>>>>>> Stashed changes
 
 //用Z Probe Stop替换ZMIN STOP（true/false）
 #define Z_Probe_Stop_Replace_ZMIN_STOP false
@@ -2516,30 +2217,13 @@
 //每个点的探测次数
 //总共探测3次
 #define Number_Of_Probes_Per_Point 3
-<<<<<<< Updated upstream
-//每个点的探测次数
-//总共探测3次
-#define Number_Of_Probes_Per_Point 3
-=======
 //将抛弃最差的数据的个数，剩余的求平均值
 //抛弃最差的1个数据
 #define The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 1
->>>>>>> Stashed changes
 
 //防止温度传感器失效
 //如果挤出头在 E_Heating_Waiting_Time 秒内，温度没有上升 E_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
 //打印机将会停止工作，直到被重置。
-<<<<<<< Updated upstream
-#define E_Heating_Waiting_Time 40           //秒
-#define E_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-//如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
-//打印机将会停止工作，直到被重置。
-#define BED_Heating_Waiting_Time 40           //秒
-#define BED_Temperature_Rise_During_Heating_Wait_Time 1          //摄氏度
-
-#endif
-
-=======
 #define E_Heating_Waiting_Time 120                             //秒
 #define E_Temperature_Rise_During_Heating_Wait_Time 2          //摄氏度
 //如果热床在 BED_Heating_Waiting_Time 秒内，温度没有上升 BED_Temperature_Rise_During_Heating_Wait_Time 摄氏度，就意味着温度传感器失效。
@@ -2575,7 +2259,6 @@
 #endif
 
 
->>>>>>> Stashed changes
 //————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
 //代码修正
@@ -2606,15 +2289,12 @@
     #error "INVERT_Z_DIR_Key 必须是布尔值。"
     #endif
 #endif
-<<<<<<< Updated upstream
-=======
 #if defined(INVERT_E_DIR_Key)
     #if INVERT_E_DIR_Key != true && INVERT_E_DIR_Key != false
     #error "INVERT_E_DIR_Key 必须是布尔值。"
     #endif
 #endif
 
->>>>>>> Stashed changes
 
 //检查LCD反转的正确性
 #if  defined(REVERSE_ENCODER_DIRECTION_key)
@@ -2643,11 +2323,7 @@
 #elif !defined(The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded) && !defined(Number_Of_Probes_Per_Point)
 // 两个宏都未被定义
 #else
-<<<<<<< Updated upstream
 #error "\"The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded\" 和 \"Number_Of_Probes_Per_Point\" 都需要同时被定义或者同时不被定义"
-=======
-#error "The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded 和 Number_Of_Probes_Per_Point 都需要同时被定义或者同时不被定义"
->>>>>>> Stashed changes
 #endif
 
 //确保挤出头热保护设置的正确性
@@ -2656,11 +2332,7 @@
 #elif !defined(E_Heating_Waiting_Time) && !defined(E_Temperature_Rise_During_Heating_Wait_Time)
 // 两个宏都未被定义
 #else
-<<<<<<< Updated upstream
 #error "\"E_Heating_Waiting_Time\" 和 \"E_Temperature_Rise_During_Heating_Wait_Time\" 都需要同时被定义或者同时不被定义"
-=======
-#error "E_Heating_Waiting_Time 和 E_Temperature_Rise_During_Heating_Wait_Time 都需要同时被定义或者同时不被定义"
->>>>>>> Stashed changes
 #endif
 
 //确保热床热保护设置的正确性
@@ -2669,11 +2341,7 @@
 #elif !defined(BED_Heating_Waiting_Time) && !defined(BED_Temperature_Rise_During_Heating_Wait_Time)
 // 两个宏都未被定义
 #else
-<<<<<<< Updated upstream
 #error "\"BED_Heating_Waiting_Time\" 和 \"BED_Temperature_Rise_During_Heating_Wait_Time\" 都需要同时被定义或者同时不被定义"
-=======
-#error "BED_Heating_Waiting_Time 和 BED_Temperature_Rise_During_Heating_Wait_Time 都需要同时被定义或者同时不被定义"
->>>>>>> Stashed changes
 #endif
 
 // 检查步进电机驱动器类型是否在可选范围内
@@ -2694,57 +2362,6 @@
 #endif
 
 // 检查打印区域值是否为正数
-<<<<<<< Updated upstream
-#if Printable_Area_X <= 0
-    #error "Printable_Area_X 必须是正数"  
-#endif
-
-#if Printable_Area_Y <= 0
-    #error "Printable_Area_Y 必须是正数"
-#endif
-
-#if Printable_Area_Z <= 0
-    #error "Printable_Area_Z 必须是正数"
-#endif
-
-// 检查热保护时间和温度是否为正数
-#if E_Heating_Waiting_Time <= 0
-    #error "E_Heating_Waiting_Time 必须是正数"
-#endif
-
-#if E_Temperature_Rise_During_Heating_Wait_Time <= 0
-    #error "E_Temperature_Rise_During_Heating_Wait_Time 必须是正数"  
-#endif
-
-#if BED_Heating_Waiting_Time <= 0
-    #error "BED_Heating_Waiting_Time 必须是正数" 
-#endif
-
-#if BED_Temperature_Rise_During_Heating_Wait_Time <= 0
-    #error "BED_Temperature_Rise_During_Heating_Wait_Time 必须是正数"
-#endif
-
-// 检查热保护时间和温度是否大于等于1
-#if E_Heating_Waiting_Time < 1
-    #error "E_Heating_Waiting_Time 必须大于等于1"
-#endif
-
-#if E_Temperature_Rise_During_Heating_Wait_Time < 1
-    #error "E_Temperature_Rise_During_Heating_Wait_Time 必须大于等于1"
-#endif
-
-#if BED_Heating_Waiting_Time < 1
-    #error "BED_Heating_Waiting_Time 必须大于等于1"
-#endif
-
-#if BED_Temperature_Rise_During_Heating_Wait_Time < 1 
-    #error "BED_Temperature_Rise_During_Heating_Wait_Time 必须大于等于1"
-#endif
-
-// 检查多点探测次数相关逻辑
-#if Number_Of_Probes_Per_Point < 1
-    #error "Number_Of_Probes_Per_Point 必须大于等于1"
-=======
 // #if Printable_Area_X <= 0
 //     #error "Printable_Area_X 必须是正数"  
 // #endif
@@ -2771,7 +2388,7 @@ static_assert(Printable_Area_Z > 0.0f, "Printable_Area_Z 必须是正数");
 //     #error "Printable_Area_X 必须大于70mm"  
 // #endif
 #if defined(Printable_Area_X) && !defined(PROBING_MARGIN_KEY)
-#error "Printable_Area_X 和 PROBING_MARGIN_KEY 都需要同时被定义或者同时不被定义"
+#error "\"Printable_Area_X\" 和 \"PROBING_MARGIN_KEY\" 都需要同时被定义或者同时不被定义"
 #endif
 #if defined(Printable_Area_X) && defined(PROBING_MARGIN_KEY)
 static_assert(Printable_Area_X > PROBING_MARGIN_KEY * 2 , "Printable_Area_X 必须大于 PROBING_MARGIN_KEY * 2 " );
@@ -2781,7 +2398,7 @@ static_assert(Printable_Area_X > PROBING_MARGIN_KEY * 2 , "Printable_Area_X 必�
 //     #error "Printable_Area_Y 必须大于70mm"
 // #endif
 #if defined(Printable_Area_Y) && !defined(PROBING_MARGIN_KEY)
-#error "Printable_Area_Y 和 PROBING_MARGIN_KEY 都需要同时被定义或者同时不被定义"
+#error "\"Printable_Area_Y\" 和 \"PROBING_MARGIN_KEY\" 都需要同时被定义或者同时不被定义"
 #endif
 #if defined(Printable_Area_Y) && defined(PROBING_MARGIN_KEY)
 static_assert(Printable_Area_Y > PROBING_MARGIN_KEY * 2, "Printable_Area_Y 必须大于 PROBING_MARGIN_KEY * 2 ");
@@ -2886,7 +2503,6 @@ static_assert(BED_Temperature_Rise_During_Heating_Wait_Time >= 2.0f, "BED_Temper
 // #endif
 #if defined(Number_Of_Probes_Per_Point)
 static_assert(Number_Of_Probes_Per_Point >= 1.0f, "Number_Of_Probes_Per_Point 必须大于等于1");
->>>>>>> Stashed changes
 #endif
 
 #if defined(Number_Of_Probes_Per_Point) && defined(The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded)
@@ -2895,8 +2511,6 @@ static_assert(Number_Of_Probes_Per_Point >= 1.0f, "Number_Of_Probes_Per_Point �
     #endif
 #endif  
 
-<<<<<<< Updated upstream
-=======
 //确保断料传感器功能启用状态正确
 #if Equipment_Number == 000 && defined(FILAMENT_RUNOUT_SENSOR_Key)
     #undef FILAMENT_RUNOUT_SENSOR_Key
@@ -3099,70 +2713,70 @@ static_assert(Z_CLEARANCE_MULTI_PROBE_KEY > 0.0f, "Z_CLEARANCE_MULTI_PROBE_KEY �
 #if defined(DEFAULT_Kp_Key) && defined(DEFAULT_Ki_Key) && defined(DEFAULT_Kd_Key)
 #elif !defined(DEFAULT_Kp_Key) && !defined(DEFAULT_Ki_Key) && !defined(DEFAULT_Kd_Key)
 #else 
-#error "DEFAULT_Kp_Key、DEFAULT_Ki_Key 和 DEFAULT_Kd_Key 都需要同时被定义或者同时不被定义"
+#error "\"DEFAULT_Kp_Key\"、\"DEFAULT_Ki_Key\" 和 \"DEFAULT_Kd_Key\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保热床PID参数同时被定义
 #if defined(DEFAULT_bedKp_Key) && defined(DEFAULT_bedKi_Key) && defined(DEFAULT_bedKd_Key)
 #elif !defined(DEFAULT_bedKp_Key) && !defined(DEFAULT_bedKi_Key) && !defined(DEFAULT_bedKd_Key)
 #else 
-#error "DEFAULT_bedKp_Key、DEFAULT_bedKi_Key 和 DEFAULT_bedKd_Key 都需要同时被定义或者同时不被定义"
+#error "\"DEFAULT_bedKp_Key\"、\"DEFAULT_bedKi_Key\" 和 \"DEFAULT_bedKd_Key\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保轴步数同时被定义
 #if defined(DEFAULT_AXIS_STEPS_PER_UNIT_X) && defined(DEFAULT_AXIS_STEPS_PER_UNIT_Y) && defined(DEFAULT_AXIS_STEPS_PER_UNIT_Z) && defined(DEFAULT_AXIS_STEPS_PER_UNIT_E)
-#elif !defined(DEFAULT_AXIS_STEPS_PER_UNIT_X) && !defined(DEFAULT_AXIS_STEPS_PER_UNIT_Y) && !defined(DEFAULT_AXIS_STEPS_PER_UNIT_Z) && !defined (DEFAULT_AXIS_STEPS_PER_UNIT_E)
+#elif !defined(DEFAULT_AXIS_STEPS_PER_UNIT_X) && !defined(DEFAULT_AXIS_STEPS_PER_UNIT_Y) && !defined(DEFAULT_AXIS_STEPS_PER_UNIT_Z) && !dfined(DEFAULT_AXIS_STEPS_PER_UNIT_E)
 #else 
-#error "DEFAULT_AXIS_STEPS_PER_UNIT_X、DEFAULT_AXIS_STEPS_PER_UNIT_Y 、DEFAULT_AXIS_STEPS_PER_UNIT_Z和 DEFAULT_AXIS_STEPS_PER_UNIT_E 都需要同时被定义或者同时不被定义"
+#error "\"DEFAULT_AXIS_STEPS_PER_UNIT_X\"、\"DEFAULT_AXIS_STEPS_PER_UNIT_Y\" 、\"DEFAULT_AXIS_STEPS_PER_UNIT_Z\"和 \"DEFAULT_AXIS_STEPS_PER_UNIT_E\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保最大速度同时被定义
 #if defined(DEFAULT_MAX_FEEDRATE_X) && defined(DEFAULT_MAX_FEEDRATE_Y) && defined(DEFAULT_MAX_FEEDRATE_Z) && defined(DEFAULT_MAX_FEEDRATE_E)
-#elif !defined(DEFAULT_MAX_FEEDRATE_X) && !defined(DEFAULT_MAX_FEEDRATE_Y) && !defined(DEFAULT_MAX_FEEDRATE_Z) && !defined(DEFAULT_MAX_FEEDRATE_E)
+#elif !defined(DEFAULT_MAX_FEEDRATE_X) && !defined(DEFAULT_MAX_FEEDRATE_Y) && !defined(DEFAULT_MAX_FEEDRATE_Z) && !dfined(DEFAULT_MAX_FEEDRATE_E)
 #else 
-#error "DEFAULT_MAX_FEEDRATE_X、DEFAULT_MAX_FEEDRATE_Y 、DEFAULT_MAX_FEEDRATE_Z和 DEFAULT_MAX_FEEDRATE_E 都需要同时被定义或者同时不被定义"
+#error "\"DEFAULT_MAX_FEEDRATE_X\"、\"DEFAULT_MAX_FEEDRATE_Y\" 、\"DEFAULT_MAX_FEEDRATE_Z\"和 \"DEFAULT_MAX_FEEDRATE_E\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保最大加速度同时被定义
 #if defined(DEFAULT_MAX_ACCELERATION_X) && defined(DEFAULT_MAX_ACCELERATION_Y) && defined(DEFAULT_MAX_ACCELERATION_Z) && defined(DEFAULT_MAX_ACCELERATION_E)
-#elif !defined(DEFAULT_MAX_ACCELERATION_X) && !defined(DEFAULT_MAX_ACCELERATION_Y) && !defined(DEFAULT_MAX_ACCELERATION_Z) && !defined(DEFAULT_MAX_ACCELERATION_E)
+#elif !defined(DEFAULT_MAX_ACCELERATION_X) && !defined(DEFAULT_MAX_ACCELERATION_Y) && !defined(DEFAULT_MAX_ACCELERATION_Z) && !dfined(DEFAULT_MAX_ACCELERATION_E)
 #else 
-#error "DEFAULT_MAX_ACCELERATION_X、DEFAULT_MAX_ACCELERATION_Y 、DEFAULT_MAX_ACCELERATION_Z和 DEFAULT_MAX_ACCELERATION_E 都需要同时被定义或者同时不被定义"
+#error "\"DEFAULT_MAX_ACCELERATION_X\"、\"DEFAULT_MAX_ACCELERATION_Y\" 、\"DEFAULT_MAX_ACCELERATION_Z\"和 \"DEFAULT_MAX_ACCELERATION_E\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保默认加速度同时被定义
 #if defined(DEFAULT_ACCELERATION_Key) && defined(DEFAULT_RETRACT_ACCELERATION_Key) && defined(DEFAULT_TRAVEL_ACCELERATION_Key) && defined(DEFAULT_TRAVEL_ACCELERATION_Key)
-#elif !defined(DEFAULT_ACCELERATION_Key) && !defined(DEFAULT_RETRACT_ACCELERATION_Key) && !defined(DEFAULT_TRAVEL_ACCELERATION_Key) && !defined(DEFAULT_TRAVEL_ACCELERATION_Key)
+#elif !defined(DEFAULT_ACCELERATION_Key) && !defined(DEFAULT_RETRACT_ACCELERATION_Key) && !defined(DEFAULT_TRAVEL_ACCELERATION_Key) && !dfined(DEFAULT_TRAVEL_ACCELERATION_Key)
 #else 
-#error "DEFAULT_ACCELERATION_Key、DEFAULT_RETRACT_ACCELERATION_Key 和 DEFAULT_TRAVEL_ACCELERATION_Key 都需要同时被定义或者同时不被定义"
+#error "\"DEFAULT_ACCELERATION_Key\"、\"DEFAULT_RETRACT_ACCELERATION_Key\" 和 \"DEFAULT_TRAVEL_ACCELERATION_Key\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保探针偏移量同时被定义
 #if defined(NOZZLE_TO_PROBE_OFFSET_X) && defined(NOZZLE_TO_PROBE_OFFSET_Y) && defined(NOZZLE_TO_PROBE_OFFSET_Z) && defined(DEFAULT_TRAVEL_ACCELERATION_Key)
-#elif !defined(NOZZLE_TO_PROBE_OFFSET_X) && !defined(NOZZLE_TO_PROBE_OFFSET_Y) && !defined(NOZZLE_TO_PROBE_OFFSET_Z) && !defined(DEFAULT_TRAVEL_ACCELERATION_Key)
+#elif !defined(NOZZLE_TO_PROBE_OFFSET_X) && !defined(NOZZLE_TO_PROBE_OFFSET_Y) && !defined(NOZZLE_TO_PROBE_OFFSET_Z) && !dfined(DEFAULT_TRAVEL_ACCELERATION_Key)
 #else 
-#error "NOZZLE_TO_PROBE_OFFSET_X、NOZZLE_TO_PROBE_OFFSET_Y 和 NOZZLE_TO_PROBE_OFFSET_Z 都需要同时被定义或者同时不被定义"
+#error "\"NOZZLE_TO_PROBE_OFFSET_X\"、\"NOZZLE_TO_PROBE_OFFSET_Y\" 和 \"NOZZLE_TO_PROBE_OFFSET_Z\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保电机反向同时被定义
 #if defined(INVERT_X_DIR_Key) && defined(INVERT_Y_DIR_Key) && defined(INVERT_Z_DIR_Key) && defined(INVERT_E_DIR_Key)
-#elif !defined(INVERT_X_DIR_Key) && !defined(INVERT_Y_DIR_Key) && !defined(INVERT_Z_DIR_Key) && !defined(INVERT_E_DIR_Key)
+#elif !defined(INVERT_X_DIR_Key) && !defined(INVERT_Y_DIR_Key) && !defined(INVERT_Z_DIR_Key) && !dfined(INVERT_E_DIR_Key)
 #else 
-#error "INVERT_X_DIR_Key、INVERT_Y_DIR_Key 、INVERT_Z_DIR_Key和 INVERT_E_DIR_Key 都需要同时被定义或者同时不被定义"
+#error "\"INVERT_X_DIR_Key\"、\"INVERT_Y_DIR_Key\" 、\"INVERT_Z_DIR_Key\"和 \"INVERT_E_DIR_Key\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保打印区域同时被定义
 #if defined(Printable_Area_X) && defined(Printable_Area_Y) && defined(Printable_Area_Z) && defined(DEFAULT_TRAVEL_ACCELERATION_Key)
-#elif !defined(Printable_Area_X) && !defined(Printable_Area_Y) && !defined(Printable_Area_Z) && !defined(DEFAULT_TRAVEL_ACCELERATION_Key)
+#elif !defined(Printable_Area_X) && !defined(Printable_Area_Y) && !defined(Printable_Area_Z) && !dfined(DEFAULT_TRAVEL_ACCELERATION_Key)
 #else 
-#error "Printable_Area_X、Printable_Area_Y 和 Printable_Area_Z 都需要同时被定义或者同时不被定义"
+#error "\"Printable_Area_X\"、\"Printable_Area_Y\" 和 \"Printable_Area_Z\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保步进电机驱动器类型同时被定义
 #if defined(X_DRIVER_TYPE_KEY) && defined(Y_DRIVER_TYPE_KEY) && defined(Z_DRIVER_TYPE_KEY) && defined(E_DRIVER_TYPE_KEY)
-#elif !defined(X_DRIVER_TYPE_KEY) && !defined(Y_DRIVER_TYPE_KEY) && !defined(Z_DRIVER_TYPE_KEY) && !defined(E_DRIVER_TYPE_KEY)
+#elif !defined(X_DRIVER_TYPE_KEY) && !defined(Y_DRIVER_TYPE_KEY) && !defined(Z_DRIVER_TYPE_KEY) && !dfined(E_DRIVER_TYPE_KEY)
 #else 
-#error "X_DRIVER_TYPE_KEY、Y_DRIVER_TYPE_KEY 、Z_DRIVER_TYPE_KEY和 E_DRIVER_TYPE_KEY 都需要同时被定义或者同时不被定义"
+#error "\"X_DRIVER_TYPE_KEY\"、\"Y_DRIVER_TYPE_KEY\" 、\"Z_DRIVER_TYPE_KEY\"和 \"E_DRIVER_TYPE_KEY\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确定电源控制系统的正确性
@@ -3178,18 +2792,15 @@ static_assert(POWER_TIMEOUT_Key > 0.0f, "POWER_TIMEOUT_Key 必须是正数");
 #endif
 
 //确保热床探测点个数的正确性
-#if Equipment_Number != 0
 #if defined(GRID_MAX_POINTS_X_KEY) && defined(GRID_MAX_POINTS_Y_KEY)
 #elif !defined(GRID_MAX_POINTS_X_KEY) && !defined(GRID_MAX_POINTS_Y_KEY)
-#error "GRID_MAX_POINTS_X_KEY和 GRID_MAX_POINTS_Y_KEY 都需要同时被定义或者同时不被定义"
-#endif
+#error "\"GRID_MAX_POINTS_X_KEY\"和 \"GRID_MAX_POINTS_Y_KEY\" 都需要同时被定义或者同时不被定义"
 #endif
 
 //确保Z高度同时被定义
 #if defined(Z_CLEARANCE_DEPLOY_PROBE_KEY) && defined(Z_CLEARANCE_BETWEEN_PROBES_KEY) && defined(Printable_Area_Z) && defined(Z_CLEARANCE_MULTI_PROBE_KEY)
-#elif !defined(Z_CLEARANCE_DEPLOY_PROBE_KEY) && !defined(Z_CLEARANCE_BETWEEN_PROBES_KEY) && !defined(Z_CLEARANCE_MULTI_PROBE_KEY) && !defined(DEFAULT_TRAVEL_ACCELERATION_Key)
+#elif !defined(Z_CLEARANCE_DEPLOY_PROBE_KEY) && !defined(Z_CLEARANCE_BETWEEN_PROBES_KEY) && !defined(Z_CLEARANCE_MULTI_PROBE_KEY) && !dfined(DEFAULT_TRAVEL_ACCELERATION_Key)
 #else 
-#error "Z_CLEARANCE_DEPLOY_PROBE_KEY、Z_CLEARANCE_BETWEEN_PROBES_KEY 和 Z_CLEARANCE_MULTI_PROBE_KEY 都需要同时被定义或者同时不被定义"
+#error "\"Z_CLEARANCE_DEPLOY_PROBE_KEY\"、\"Z_CLEARANCE_BETWEEN_PROBES_KEY\" 和 \"Z_CLEARANCE_MULTI_PROBE_KEY\" 都需要同时被定义或者同时不被定义"
 #endif
->>>>>>> Stashed changes
 //————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————

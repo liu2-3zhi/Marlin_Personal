@@ -1019,17 +1019,6 @@
 // Post-process pins according to configured settings
 //
 #include "pins_postprocess.h"
-<<<<<<< Updated upstream
-
-//用Z_Probe_Stop替换ZMIN_STOP
-#ifdef Z_Probe_Stop_Replace_ZMIN_STOP
-  #if Z_Probe_Stop_Replace_ZMIN_STOP
-  #undef Z_STOP_PIN
-  #define Z_STOP_PIN Z_MIN_PROBE_PIN
-  #endif
-#endif
-
-=======
 
 //采用key_configuration_parameters.h的定义优先覆盖
 //用Z_Probe_Stop替换ZMIN_STOP
@@ -1042,9 +1031,11 @@
   #endif
 #endif
 
->>>>>>> Stashed changes
 //设置NEOPIXEL灯带PIN为电源PIN
 #if ENABLED(PSU_CONTROL)
+  #if defined(PS_ON_PIN)
   #undef PS_ON_PIN
+  #endif
   #define PS_ON_PIN NEOPIXEL_PIN
+  #define NEOPIXEL_PIN -1
 #endif

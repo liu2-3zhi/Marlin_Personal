@@ -420,8 +420,6 @@
  */
 #define PSU_CONTROL
 #define PSU_NAME "CSPS电源"
-<<<<<<< Updated upstream
-=======
 
 // 如果定义了 PSU_CONTROL_Key，则使用 key_configuration_parameters.h 中的定义来覆盖 PSU_CONTROL 的定义
 #if defined(PSU_CONTROL_Key)
@@ -440,7 +438,6 @@
   #endif
 #endif
 
->>>>>>> Stashed changes
 
 #if ENABLED(PSU_CONTROL)
   //#define MKS_PWC                 // 使用MKS PWC附加组件
@@ -458,16 +455,6 @@
   //#define PSU_POWERUP_GCODE  "M355 S1"  // 上电后运行的G-code（例如，打开箱灯）
   //#define PSU_POWEROFF_GCODE "M355 S0"  // 关电源前运行的G-code（例如，关闭箱灯）
 
-<<<<<<< Updated upstream
-  //#define AUTO_POWER_CONTROL      // 启用PS_ON引脚的自动控制
-  #if ENABLED(AUTO_POWER_CONTROL)
-    #define AUTO_POWER_FANS         // 如果风扇需要电源，打开电源
-    #define AUTO_POWER_E_FANS
-    #define AUTO_POWER_CONTROLLERFAN
-    #define AUTO_POWER_CHAMBER_FAN
-    #define AUTO_POWER_COOLER_FAN
-    #define POWER_TIMEOUT              30 // （秒）如果机器闲置此时间，关闭电源
-=======
   #define AUTO_POWER_CONTROL      // 启用PS_ON引脚的自动控制
   #if ENABLED(AUTO_POWER_CONTROL)
     // #define AUTO_POWER_FANS         // 如果风扇需要电源，打开电源
@@ -476,15 +463,12 @@
     // #define AUTO_POWER_CHAMBER_FAN
     // #define AUTO_POWER_COOLER_FAN
     #define POWER_TIMEOUT              60*5 // （秒）如果机器闲置此时间，关闭电源
->>>>>>> Stashed changes
     //#define POWER_OFF_DELAY          60 // （秒）M81命令后的关闭电源延迟。有用于让风扇运行更长的时间。
   #endif
   #if ANY(AUTO_POWER_CONTROL, POWER_OFF_WAIT_FOR_COOLDOWN)
     //#define AUTO_POWER_E_TEMP        50 // （°C）如果任何挤出器超过此温度，打开电源
     //#define AUTO_POWER_CHAMBER_TEMP  30 // （°C）如果腔体超过此温度，打开电源
     //#define AUTO_POWER_COOLER_TEMP   26 // （°C）如果冷却器超过此温度，打开电源
-<<<<<<< Updated upstream
-=======
   #endif
 #endif
 
@@ -497,7 +481,6 @@
       #endif
       #define POWER_TIMEOUT  POWER_TIMEOUT_Key
     #endif
->>>>>>> Stashed changes
   #endif
 #endif
 
@@ -1696,17 +1679,6 @@
 
 //用Z_Probe_Stop替换ZMIN_STOP
 #ifdef Z_Probe_Stop_Replace_ZMIN_STOP
-<<<<<<< Updated upstream
-        #if defined(FIX_MOUNTED_PROBE) && !defined(BLTOUCH)
-        //什么也不做
-        #endif
-
-        #if defined(BLTOUCH)
-            #error "使用BLTOUCH的时候无法用Z_Probe_Stop替换ZMIN_STOP"
-        #endif
-#endif
-
-=======
   #if defined(FIX_MOUNTED_PROBE) && !defined(BLTOUCH)
   // 什么也不做
   #endif
@@ -1719,7 +1691,6 @@
   #warning "用Z_Probe_Stop替换ZMIN_STOP貌似只有使用固定式探针的时候才能正常工作"
   #endif
 #endif
->>>>>>> Stashed changes
 
 /**
  * 喷嘴到探针的偏移量 { X, Y, Z }
@@ -1782,8 +1753,6 @@
 // 大多数探针应远离床的边缘，但
 // 使用NOZZLE_AS_PROBE时，这可以是负值，以获得更宽的探测区域。
 #define PROBING_MARGIN 35
-<<<<<<< Updated upstream
-=======
 //采用key_configuration_parameters.h的定义优先覆盖
 #if defined(PROBING_MARGIN_KEY)
   #if defined(PROBING_MARGIN)
@@ -1791,7 +1760,6 @@
   #endif
 #define PROBING_MARGIN PROBING_MARGIN_KEY
 #endif
->>>>>>> Stashed changes
 
 // 探针之间的X和Y轴移动速度（mm/min）
 #define XY_PROBE_FEEDRATE (133*60)
@@ -1855,13 +1823,10 @@
 #define MULTIPLE_PROBING (Number_Of_Probes_Per_Point - The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded)
 #undef EXTRA_PROBING
 #define EXTRA_PROBING The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded
-<<<<<<< Updated upstream
-=======
   #if The_Number_Of_Data_That_Is_Allowed_To_Be_Discarded == 0 && Number_Of_Probes_Per_Point == 1
     #undef MULTIPLE_PROBING
     #undef EXTRA_PROBING
   #endif
->>>>>>> Stashed changes
 #endif
 
 
@@ -1882,10 +1847,6 @@
 #define Z_CLEARANCE_MULTI_PROBE     20 // 多次探针之间的Z间隙
 //#define Z_AFTER_PROBING           5 // 探测完成后的Z位置
 
-<<<<<<< Updated upstream
-#define Z_PROBE_LOW_POINT          -2 // 在触发点下方的最远距离，停止前进
-
-=======
 //采用key_configuration_parameters.h的定义优先覆盖
 #if defined(Z_CLEARANCE_DEPLOY_PROBE_KEY) && defined(Z_CLEARANCE_BETWEEN_PROBES_KEY) && defined(Z_CLEARANCE_MULTI_PROBE_KEY)
   #if defined(Z_CLEARANCE_DEPLOY_PROBE)
@@ -1904,7 +1865,6 @@
 
 #define Z_PROBE_LOW_POINT          -2 // 在触发点下方的最远距离，停止前进
 
->>>>>>> Stashed changes
 // 对于M851，给出Z探针偏移的范围
 #define Z_PROBE_OFFSET_RANGE_MIN -20
 #define Z_PROBE_OFFSET_RANGE_MAX 20
@@ -2157,8 +2117,6 @@
 
 #if ENABLED(FILAMENT_RUNOUT_SENSOR)
   #define FIL_RUNOUT_ENABLED_DEFAULT true // 在启动时启用传感器。使用M412后跟M500覆盖。
-<<<<<<< Updated upstream
-=======
 //采用key_configuration_parameters.h的定义优先覆盖
 #if defined(FILAMENT_RUNOUT_SENSOR_Key) && defined(FILAMENT_RUNOUT_SENSOR_Key_Switch)
   #if defined(FIL_RUNOUT_ENABLED_DEFAULT)
@@ -2167,7 +2125,6 @@
   #define FIL_RUNOUT_ENABLED_DEFAULT FILAMENT_RUNOUT_SENSOR_Key_Switch
 #endif
 
->>>>>>> Stashed changes
   #define NUM_RUNOUT_SENSORS   1          // 传感器的数量，每个挤出机最多一个。为每个定义一个FIL_RUNOUT#_PIN。
 
   #define FIL_RUNOUT_STATE     HIGH        // 表示丝材不存在的引脚状态。
@@ -2392,8 +2349,6 @@
   #define GRID_MAX_POINTS_X 5
   #define GRID_MAX_POINTS_Y GRID_MAX_POINTS_X
 
-<<<<<<< Updated upstream
-=======
 //采用key_configuration_parameters.h的定义优先覆盖
 #if defined(GRID_MAX_POINTS_X_KEY) && defined(GRID_MAX_POINTS_Y_KEY)
   #if defined(GRID_MAX_POINTS_X)
@@ -2406,7 +2361,6 @@
   #define GRID_MAX_POINTS_Y GRID_MAX_POINTS_Y_KEY
 #endif
 
->>>>>>> Stashed changes
   // 沿 Y 轴探测，每列后进 X
   //#define PROBE_Y_FIRST
 

@@ -1,7 +1,11 @@
 MEMORY
 {
   ram (rwx) : ORIGIN = 0x20000000, LENGTH = 48K - 40
+<<<<<<<< Updated upstream:buildroot/share/PlatformIO/ldscripts/creality256k.ld
   rom (rx)  : ORIGIN = 0x08007000, LENGTH = 256K - 28K
+========
+  rom (rx)  : ORIGIN = 0x08005000, LENGTH = 512K - 20K - 4K
+>>>>>>>> Stashed changes:buildroot/share/PlatformIO/ldscripts/ZONESTAR_ZM3E_512K.ld
 }
 
 /* Provide memory region aliases for common.inc */
